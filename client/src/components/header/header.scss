@@ -1,0 +1,183 @@
+.header {
+    display: flex;
+    height: clamp(120px, 15vw, 226px);
+    background-color: #807373;
+    margin: 0 auto;
+    max-width: 1600px;
+
+    .header-content {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .header-content-mobile {
+        display: none;
+    }
+}
+
+.header-content__logo {
+    max-width: 460px;
+    display: flex;
+    align-items: center;
+      img {
+          width: clamp(40px, 5vw, 74px);
+          margin: clamp(10px, 2vw, 15px) clamp(5px, 1vw, 8px) clamp(15px, 3vw, 20px) clamp(15px, 5vw, 32px);
+      }
+      h2 {
+            font-size: clamp(50px, 4vw, 64px);
+            padding-bottom: 0.94rem;
+            color: #008000;
+            cursor: pointer;
+      }
+}
+
+.header-content__nav {
+    max-width: 492px;
+    display: flex;
+    align-items: center;
+    margin-left: max(0px, min(280px, calc(280px - ((1600px - 100vw) * 0.5))));
+    ul {
+        display: flex;
+        li a {
+            color: #000;
+            font-size: clamp(16px, 2.75vw, 32px);
+            padding: 5px clamp(16px, 2vw, 37px)
+        }
+        li a:hover {
+            background-color: white;
+        }
+    }
+}
+
+.header-content-sign__in {
+    display: flex;
+    justify-content: center;
+    align-items:center;
+    button {
+        margin-right: 15px;
+        height: clamp(50px , 5vw, 74px);
+        width: clamp(120px, 13vw, 200px);
+        font-size: clamp(16px, 2vw, 32px);
+        background-color: #927171;
+        color: #B32A2A;
+        border-radius: 55px;
+        border: none;
+        cursor: pointer;
+    }
+    button:hover {
+        background-color: #e6e8ea;
+    }
+}
+
+
+@media (max-width: 768px) {
+    .header .header-content{
+       display: none;
+    }
+   .header .header-content-mobile {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        .header-content-mobile__logo {
+            display: flex;
+            align-items: center;
+            max-width: 228px;
+            img {
+                margin: 0 15px;
+                width: 50px;
+            }
+            h2 {
+                color: #008000;
+            }
+        }
+        .header-content-sign__in-btn {
+            display: flex;
+            align-items: center;
+            margin-right: 5px;
+        }
+
+        .burger-item {
+            margin-right: 5px;
+            margin-left: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+    }
+    
+    
+}
+
+@media (max-width : 456px) {
+    .header-content-mobile__logo {
+        img {
+               width: 50px;
+               height: 50px;
+            }
+        h2 {
+            font-size: 16px;
+        }
+    }
+}
+
+
+
+.header-content__nav-mobile {
+    position: absolute;
+    top: 95px;
+    left: 15px;
+    background-color: wheat;
+        ul li {
+            width: 200px;
+            border: 1px rgb(0, 0, 0) solid;
+            a {
+                color: #000;
+                font-size: 25px;
+                padding: 5px 15px;
+            }
+        }
+}
+
+.header-content__nav-mobile-show {
+    opacity: 1; /* Делаем полностью видимым */
+    visibility: visible; /* Делаем интерактивным */
+    transform: translateX(0); /* Возвращаем на исходную позицию */
+
+    /* При показе visibility меняется мгновенно */
+    transition: opacity 0.4s ease-out,
+                transform 0.4s ease-out,
+                visibility 0s linear 0s;
+
+}
+
+.header-content__nav-mobile-hide {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-100%); /* Снова сдвигаем за экран */
+
+    /* При скрытии visibility меняется с задержкой */
+    transition: opacity 0.4s ease-out,
+                transform 0.4s ease-out,
+                visibility 0s linear 0.4s;
+}
+
+.header-content__nav {
+    max-width: 492px;
+    display: flex;
+    align-items: center;
+    margin-left: max(0px, min(280px, calc(280px - ((1600px - 100vw) * 0.5))));
+    ul {
+        display: flex;
+        li a {
+            color: #000;
+            font-size: clamp(16px, 2.75vw, 32px);
+            padding: 5px clamp(16px, 2vw, 37px)
+        }
+        li a:hover {
+            background-color: white;
+        }
+    }
+}
+
+
