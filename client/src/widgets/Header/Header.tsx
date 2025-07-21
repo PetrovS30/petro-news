@@ -1,4 +1,4 @@
-import { useState, useEffect} from 'react';
+import { useState, useEffect, useRef} from 'react';
 import {useDispatch, useSelector } from 'react-redux';
 import Cookies from 'js-cookie';
 import { Link } from 'react-router-dom';
@@ -18,6 +18,8 @@ const Header = () => {
     const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
     const [isBurgerMenuOpened,setIsBurgerMenuOpened] = useState(true);
     const [isShowModalForm, setShowModalForm] = useState(false);
+    const [dropDownMenu, setDropDownMenu] = useState(false);
+    const dropdownRef = useRef(null); // 👈 Создаем ref для выпадающего меню
 
     const {isAuthChecked, isSignIn, isCurrentUser} = useSelector(
         (state : {authReducer: {
@@ -30,6 +32,8 @@ const Header = () => {
 
     const dispatch = useDispatch();
 
+
+
     const handleSignOut = () => {
         dispatch(setSignIn(false));
         dispatch(setCurrentUser(null));
@@ -37,11 +41,13 @@ const Header = () => {
         Cookies.remove('authToken');
         Cookies.remove('isSignIn', { path: '/' });
         Cookies.remove('dashboard');
+        setDropDownMenu(false);
     }
 
     const showNavMenu = () =>  {
         setIsNavMenuOpen(isNavMenuOpen => !isNavMenuOpen);
         setIsBurgerMenuOpened(!isBurgerMenuOpened);
+        setDropDownMenu(false);
     } 
 
     useEffect(() => {
@@ -58,6 +64,22 @@ const Header = () => {
         };
     }, [isNavMenuOpen, mobileBreakpoint]); 
 
+// 👈 useEffect для добавления и удаления слушателя события
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)){
+                setDropDownMenu(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []); // Пустой массив зависимостей означает, что эффект запустится один раз при монтировании
+
 
     const closeFormModal = () => {
         setShowModalForm(false);
@@ -71,7 +93,7 @@ const Header = () => {
         if(bln) {
             Cookies.set('dashboard', "true");
             dispatch(setUserDashboard(bln));
-/*             Cookies.set('isSignIn', "true"); */
+            setDropDownMenu(true);
         } 
     }
 
@@ -84,26 +106,32 @@ const Header = () => {
                 </div>
                 <nav className='header-content__nav'>
                     <ul>
-                        <li><a href="#">Sport</a></li>
-                        <li><a href="#">NEWS</a></li>
-                        <li><a href="#">Nature</a></li>
+                        <li><Link to='/sport'>Sport</Link></li>
+                        <li><Link to='/news'>NEWS</Link></li>
+                        <li><Link to='/nature'>Nature</Link></li>
                     </ul>
                 </nav>
                 <div className='header-content-sign__in'>
-                {/* ДОБАВЬТЕ ЭТОТ УСЛОВНЫЙ РЕНДЕРИНГ: */}
+
                     {!isAuthChecked ? (
                         <div style={{ minWidth: '80px', height: '20px' }}></div> 
                     ) : (
                         <>
                             {!isSignIn && <button onClick={toggleFormMode}>Sign In</button>}
-                            {isSignIn && isCurrentUser && <span>{isCurrentUser.firstName}<br/><Link onClick={() => toggleUserDashboard(true)} to="/dashboard">Личный кабинет</Link></span>}
-                            {isSignIn && !isCurrentUser && <span>{}</span>}
-                            {isSignIn && <button onClick={handleSignOut}><span>Выйти</span></button>}
+                            {isSignIn && isCurrentUser && 
+                            <span style={{marginRight: "12px"}}>{isCurrentUser.firstName}<br/>
+                            <Link onClick={() => toggleUserDashboard(true)} to="/dashboard">Личный кабинет</Link></span>}
+                            {dropDownMenu && <div  ref={dropdownRef}  className='drop-down-menu'>
+                                    <Link to='/dashboard?tab=newTop'><div>Добавить тему</div></Link>
+                                    <Link to='/dashboard?tab=settings'><div>Личный кабинет</div></Link>
+                                    <div onClick={handleSignOut}>выход</div>
+                                </div>}
                         </>
                     )}
+
                 </div>
             </div>
-               {/*  mobile */}
+               {/*  mobile header*/}
             <div className='header-content-mobile'>
                 <div onClick={showNavMenu} className='burger-item'>
                     {isBurgerMenuOpened ? <BurgerIcon/> : <CloseMenu/>}
@@ -114,17 +142,20 @@ const Header = () => {
                 </div>
                 <div className='header-content-sign__in-btn'>
                     <div className='header-content-sign__in'>
-                        {/* ДОБАВЬТЕ ЭТОТ УСЛОВНЫЙ РЕНДЕРИНГ: */}
-                        {!isAuthChecked ? (
 
+                        {!isAuthChecked ? (
                             <div style={{ minWidth: '80px', height: '20px' }}></div> 
                         ) : (
-
                             <>
                                 {!isSignIn && <button onClick={toggleFormMode}>Sign In</button>}
-                                {isSignIn && isCurrentUser && <span>{isCurrentUser.firstName}</span>}
-                                {isSignIn && !isCurrentUser && <span>{}</span>}
-                                {isSignIn && <button onClick={handleSignOut}>Выйти</button>}
+                                {isSignIn && isCurrentUser && 
+                                <span style={{marginRight: "12px"}}>{isCurrentUser.firstName}<br/>
+                                <Link onClick={() => toggleUserDashboard(true)} to="/dashboard">Личный кабинет</Link></span>}
+                            {dropDownMenu && <div  ref={dropdownRef}  className='drop-down-menu'>
+                                    <Link to='/dashboard?tab=newTop'><div>Добавить тему</div></Link>
+                                    <Link to='/dashboard?tab=settings'><div>Личный кабинет</div></Link>
+                                    <div onClick={handleSignOut}>выход</div>
+                                </div>}
                             </>
                         )}
                     </div>
@@ -133,9 +164,9 @@ const Header = () => {
             {/* list */}
             <nav className={`header-content__nav-mobile ${isNavMenuOpen ? 'header-content__nav-mobile-show' : 'header-content__nav-mobile-hide'}`}>
                 <ul>
-                    <li><a href="">Sport</a></li>
-                    <li><a href="">NEWS</a></li>
-                    <li><a href="">Nature</a></li>
+                    <li><Link to='/sport'>Sport</Link></li>
+                    <li><Link to='/news'>NEWS</Link></li>
+                    <li><Link to='/nature'>Nature</Link></li>
                 </ul>
             </nav>
             {/* form registr */}
@@ -149,5 +180,4 @@ const Header = () => {
 }
 
 export default Header;
-
 

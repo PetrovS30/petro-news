@@ -48,27 +48,24 @@ const SignInForm = (props : SignInFormProps) => {
         dispatch(setSignIn(true));
     }
 
-        // Объект с данными для отправки на сервер
         const loginData = {
             email,
             password,
         };
 
         try {
-            // Выполняем POST-запрос к вашему API входа
             const res = await fetch("http://localhost:3000/api/login", {
                 method: 'POST',
                 headers: {
-                    "Content-Type": "application/json", // Указываем, что отправляем JSON
+                    "Content-Type": "application/json", 
                 },
                 body: JSON.stringify(loginData), // Преобразуем объект в JSON-строку
             });
 
-            if (res.ok) { // Если HTTP-статус ответа 2xx (например, 200 OK)
+            if (res.ok) { 
                 const data = await res.json(); // Парсим ответ как JSON
                 console.log('Login successful:', data);
                 handleSignInSuccess();
-                // Вызываем onLoginSuccess с данными пользователя и токеном
                 if (data.user && data.token) {
                     handleLoginSuccess(data.user);
                     console.log(data.user);
@@ -90,7 +87,7 @@ const SignInForm = (props : SignInFormProps) => {
 
 
                 if (data.token) {
-                    setCookie('authToken', data.token, 7); // Сохранить на 7 дней
+                    setCookie('authToken', data.token, 7); 
                     setCookie('isSignIn', "true", 7); 
                     console.log('JWT токен сохранен в куки (вручную):', data.token);
                 }
@@ -98,29 +95,25 @@ const SignInForm = (props : SignInFormProps) => {
                 // Очищаем поля формы после успешного входа
                 setEmail('');
                 setPassword('');
-                props.formClose(false); // Закрываем модальное окно формы
-                } else { // Если HTTP-статус ответа не 2xx (например, 400, 401, 500)
-                // Пытаемся распарсить JSON-ошибку от сервера
+                props.formClose(false); 
+                } else {
                     const contentType = res.headers.get("content-type");
 
                     if (contentType && contentType.includes("application/json")) {
                         const errorData = await res.json();
-                        // Устанавливаем сообщение об ошибке, полученное от сервера
                         setError(errorData.message || 'Что-то пошло не так при входе.');
                         console.error('Login failed:', errorData.message);
                     } else {
-                        // Если ответ не JSON (например, HTML-страница ошибки 500)
-                        const errorMessage = await res.text(); // Получаем ответ как текст
+                        const errorMessage = await res.text(); 
                         setError('Получен неожиданный ответ от сервера. Пожалуйста, попробуйте еще раз.');
                         console.error('Login failed (non-JSON response):', res.status, errorMessage);
                     }
                 }
         } catch (err) {
-            // Обработка сетевых ошибок (например, сервер недоступен)
             console.error('Сетевая ошибка при входе:', err);
             setError('Не удалось подключиться к серверу. Пожалуйста, проверьте подключение или попробуйте позже.');
         } finally {
-            setLoading(false); // Всегда отключаем состояние загрузки после попытки запроса
+            setLoading(false);
         }
     };
 
@@ -129,9 +122,7 @@ const SignInForm = (props : SignInFormProps) => {
                 <div onClick={() => props.formClose(false)} className='modal-contant-pages-closebtn'>
                     <CloseBtn />
                 </div>
-                {/* Привязываем handleSubmit к событию onSubmit формы */}
                 <form className='reg-page-form' onSubmit={handleSubmit}>
-                    {/* Отображение ошибки, если есть */}
                     {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
 
                     <div className='input'>
@@ -144,8 +135,8 @@ const SignInForm = (props : SignInFormProps) => {
                             autoComplete="username"
                             id="signInEmail"
                             name="email"
-                            value={email} // Привязываем значение поля к состоянию email
-                            onChange={(e) => setEmail(e.target.value)} // Обновляем состояние при изменении
+                            value={email} 
+                            onChange={(e) => setEmail(e.target.value)} 
                             required // Делаем поле обязательным
                         />
                     </div>
@@ -159,21 +150,21 @@ const SignInForm = (props : SignInFormProps) => {
                             autoComplete="current-password"
                             id="signInPassword"
                             name="password"
-                            value={password} // Привязываем значение поля к состоянию password
-                            onChange={(e) => setPassword(e.target.value)} // Обновляем состояние при изменении
-                            required // Делаем поле обязательным
+                            value={password} 
+                            onChange={(e) => setPassword(e.target.value)}
+                            required 
                         />
                     </div>
                     <div className='reg-page-form-sign-in'>
                         <button
                             className='reg-page-form-sign-in-btn'
-                            type="submit" // Указываем тип "submit" для кнопки отправки формы
-                            disabled={loading} // Отключаем кнопку во время загрузки
+                            type="submit" 
+                            disabled={loading} 
                         >
                             {loading ? 'Вход...' : 'Sign in'}
                         </button>
                         <span>
-                            <a href="#">Forgot password?</a> {/* Пока placeholder */}
+                            <a href="#">Forgot password?</a> 
                         </span>
                     </div>
                 </form>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Cookies from "js-cookie";
 
 import { useDispatch} from "react-redux";
@@ -10,31 +10,34 @@ import { setUserDashboard } from "../../store/slice/authSlice";
 import ChangePassword from "./ui/ChangePassword";
 import PersonalInfo from './ui/PersonalInfo';
 import NewTopic from "./ui/NewTopic";
+import  MyTopic from "./ui/MyTopic";
 import './userDashboard.scss';
+
 
 
 const UserDashboard = () => {
     const {isSignIn, isCurrentUser} = useSelector(state => state.authReducer);
     const firstName = isCurrentUser?.firstName; // Опциональная цепочка (`?.`)
     const navigate = useNavigate();
+    const location = useLocation();
     const dispatch = useDispatch();
 
     const [activeTab, setActiveTab] = useState('settings');
 
           // Меняем URL при выборе вкладки
-    const handleTabChange = (tab) => {
+    const handleTabChange = (tab : string) => {
         setActiveTab(tab);
         navigate(`?tab=${tab}`); // Просто добавляем параметр в URL
     };
 
-    // При загрузке проверяем параметр из URL
+    // При загрузке страницы проверяем параметр из URL
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const tab = params.get('tab');
         if (tab && ['settings', 'myTop', 'functions', 'newTop'].includes(tab)) {
             setActiveTab(tab);
         }
-    }, []);
+    }, [location]);
 
 
     useEffect(() => {
@@ -61,10 +64,11 @@ const UserDashboard = () => {
     }
 
   return (
-    <div style={{ backgroundColor: "black", color: "white", minHeight: 450}}>
-        <div style={{display: "flex", maxWidth: 1600, margin: "0 auto  0", padding: "10px 20px"}}>
-            <div style={{display: 'flex'}}>
-              <div style={{margin: "10px 20px 20px 200px", height: 260, padding: 10, backgroundColor: '#8d9c25', borderTop: 'red 2px solid', borderRadius: 4}}>
+
+      <div className="dashboard-container">
+        <div  className='container-flex-centered'>
+          <div className="dashboard-content-wrapper">
+              <div className="dashboard-sidebar" >
                 <h2>Welcome, {firstName}</h2>
                 <nav aria-label="Управление личным кабинетом">
                   <ul>
@@ -87,10 +91,10 @@ const UserDashboard = () => {
                 </nav>
               </div>
 
-              <div style={{maxWidth: 480}}> 
+              <div className="dashboard-main-content">
                       {activeTab === "settings" ? <PersonalInfo/> : null}
 
-                      {activeTab === "myTop" ? 'No toppic' : null}
+                      {activeTab === "myTop" ? <MyTopic/> : null}
 
                       {activeTab === "functions" ? <ChangePassword/> : null} 
 

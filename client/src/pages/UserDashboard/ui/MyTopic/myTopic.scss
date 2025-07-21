@@ -1,0 +1,105 @@
+.my-topics__list {
+    h2 {
+        margin: 10px 12px
+    }
+    &-form {
+        background-color: #00b8e8;
+        margin: 5px;
+        padding: 3px 5px;
+        border-radius: 5px;
+    }
+}
+
+.my-topics__list-item {
+    display: flex;
+    align-items: center;
+    background-color: #FFFFFF;
+    margin: 8px 8px 8px 15px;
+    padding: 8px 8px 8px 6px;
+    color: black;
+    button {
+        background-color: inherit;
+    }
+}
+
+.my-topics__list-link {
+    display: inline-block;
+    background-color: #D9D9D9;
+    padding: 8px 19px;
+    margin: 12px 27px;
+    width: 436px;
+    font-size: 12px;
+}
+
+
+// Стили для пагинации
+.pagination {
+    &__wrapper {
+        display: flex;
+        align-items: center;
+        margin: 10px 15px 20px 18px;
+    }
+
+    &__arrow-container {
+        display: inline-block;
+    }
+
+    &__arrow {
+        cursor: pointer;
+
+        &--disabled {
+            cursor: not-allowed;
+            opacity: 0.5; 
+        }
+    }
+
+    &__list {
+        display: inline-block;
+        list-style: none; 
+        padding: 0; 
+        margin: 0; 
+    }
+
+    &__list-item {
+        display: inline-block;
+        margin: 10px;
+        border: 1px black solid;
+        padding: 4px;
+
+        &--active {
+            border: 2px solid #007bff;
+        }
+    }
+
+    &__button {
+        width: 30px;
+        height: 30px;
+        background-color: inherit; // Наследуем фон, или можно поставить transparent
+        font-size: 20px;
+        font-weight: normal;
+        color: black;
+        cursor: pointer;
+        border: none; 
+        padding: 0; 
+
+        &--active {
+            font-weight: bold;
+            color: #007bff;
+        }
+    }
+}
+
+.my-topics__list-btn-trash, 
+.my-topics__list-btn-edit {
+    display: inline;
+    padding: 6px 4px;
+    margin: 4px 20px;
+}
+
+
+
+@media(max-width: 700px) {
+    .my-topics__list-link {
+        max-width: 200px;
+    }
+}

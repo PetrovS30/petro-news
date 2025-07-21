@@ -1,11 +1,7 @@
 import './changePassword.scss';
 
-
 import {useState } from 'react';
 import Cookies from 'js-cookie';
-
-
-
 
 const ChangePassword = () => {
     const [currentPassword,setCurrentPassword] =  useState('');

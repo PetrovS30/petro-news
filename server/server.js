@@ -5,212 +5,199 @@ const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const jwt = require('jsonwebtoken');
 
-require('dotenv').config();
+// Импортируем модули AWS SDK v3
+const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3'); // Клиент S3 для взаимодействия
+const { Upload } = require('@aws-sdk/lib-storage'); // Утилита для удобной загрузки файлов в S3
+
+const path = require('path'); // Для работы с путями файлов (если потребуется)
+require('dotenv').config(); // Загружает переменные окружения из .env файла
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000; // Используем порт из .env или по умолчанию 3000
 
-// --- Начало настроек Middleware ---
+// --- Глобальные Middleware ---
 
-// 1. CORS Middleware: Разрешает запросы с других доменов.
-// ЭТО ДОЛЖЕН БЫТЬ ЕДИНСТВЕННЫЙ ВЫЗОВ cors()
+// 1. CORS Middleware: Разрешает запросы с вашего фронтенда.
 app.use(cors({
-    origin: 'http://localhost:5173' // Разрешить запросы только с вашего фронтенда
+    origin: 'http://localhost:5173', // Укажите точный домен вашего фронтенда
+    credentials: true // Разрешить отправку куки и заголовков авторизации
 }));
 
-// 2. Body Parsers (для JSON и URL-encoded данных).
-// ЭТО ДОЛЖЕН БЫТЬ ЕДИНСТВЕННЫЙ ВЫЗОВ express.json() И express.urlencoded()
-// Эти парсеры нужны для маршрутов, которые принимают JSON/URL-encoded данные (signup, login, change-password, update-name).
+// 2. Body Parsers: Для обработки входящих JSON и URL-encoded данных.
 // Multer будет обрабатывать multipart/form-data для файловых загрузок.
-app.use(express.json({ limit: '50mb' })); // Увеличиваем лимит для JSON
-app.use(express.urlencoded({ limit: '50mb', extended: true })); // Увеличиваем лимит для URL-encoded
+app.use(express.json({ limit: '50mb' })); // Увеличиваем лимит для JSON тела запроса
+app.use(express.urlencoded({ limit: '50mb', extended: true })); // Увеличиваем лимит для URL-encoded тела запроса
 
-// 3. Настройка Multer для обработки загрузки файлов.
-// Multer не используется как app.use() глобально, а применяется ТОЛЬКО к конкретному маршруту POST,
-// который принимает файлы.
-const storage = multer.memoryStorage(); // Файл будет доступен в req.file.buffer
+
+// --- Настройка Selectel S3 с AWS SDK v3 ---
+// Создаем экземпляр S3Client для взаимодействия с S3-совместимым хранилищем (Selectel)
+const s3Client = new S3Client({
+    credentials: {
+        accessKeyId: process.env.S3_ACCESS_KEY_ID, // Ваши ключи доступа Selectel
+        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY, // Ваши секретные ключи Selectel
+    },
+    region: process.env.S3_REGION, // Регион Selectel (например, 'ru-1')
+    endpoint: process.env.S3_ENDPINT, // Эндпоинт для Selectel S3 (например, 'https://s3.selcdn.ru')
+    forcePathStyle: true, // Важно для S3-совместимых хранилищ, использующих Path-style адресацию
+});
+
+// --- Настройка Multer для обработки загрузки файлов ---
+// Multer теперь будет временно хранить файл в памяти (`req.file.buffer`),
+// а затем мы вручную загрузим его в S3 с помощью AWS SDK v3.
 const upload = multer({
-    storage: storage,
+    storage: multer.memoryStorage(), // Файл будет доступен в req.file.buffer
     limits: {
         fileSize: 50 * 1024 * 1024, // Лимит размера файла до 50 МБ
+    },
+    fileFilter: (req, file, cb) => {
+        // Фильтрация типов файлов: разрешаем только изображения
+        const allowedMimes = ['image/jpeg', 'image/png', 'image/gif'];
+        if (allowedMimes.includes(file.mimetype)) {
+            cb(null, true); // Разрешить загрузку
+        } else {
+            // Отклонить загрузку с сообщением об ошибке
+            cb(new Error('Invalid file type. Only image files (jpeg, png, gif) are allowed.'), false);
+        }
     }
 });
 
 
-//  Middleware JWT token от client to server
+// --- Middleware для верификации JWT токена ---
 const authMiddleware = (req, res, next) => {
-  console.log("Полученные заголовки:", req.headers); // Проверьте наличие Authorization
-  
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    console.log("Заголовок Authorization отсутствует");
-    return res.status(401).json({ error: "Требуется авторизация" });
-  }
+    const authHeader = req.headers.authorization;
+    // Проверяем наличие заголовка Authorization и его формат 'Bearer token'
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: "Требуется авторизация: токен не предоставлен или неверный формат." });
+    }
 
-  const token = authHeader.split(' ')[1];
-  console.log("Извлечённый токен:", token); // Проверьте, что токен извлекся
-  
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("Декодированный токен:", decoded); // Проверьте содержимое
-    req.user = decoded;
-    next();
-  } catch (err) {
-    console.log("Ошибка верификации:", err);
-    return res.status(401).json({ error: "Неверный токен" });
-  }
+    const token = authHeader.split(' ')[1]; // Извлекаем токен из заголовка
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET); // Верифицируем токен
+        req.user = decoded; // Добавляем декодированные данные пользователя в объект запроса
+        next(); // Передаем управление следующему middleware или обработчику маршрута
+    } catch (err) {
+        console.error('Ошибка верификации токена:', err);
+        return res.status(401).json({ error: "Неверный или просроченный токен." });
+    }
 };
 
-// 2. Middleware для Express
-// Включаем CORS для разрешения запросов с других доменов (например, с вашего фронтенда)
-app.use(cors());//можно подробнее настроить
-// Включаем парсер JSON для обработки данных, отправленных в теле запроса (req.body)
-app.use(express.json());//use middleware
 
-// 3. Конфигурация подключения к базе данных MySQL (использование Connection Pool)/ const connection = mysql.createConnection(dbConfig);
-// Connection Pool более эффективен и надежен для серверных приложений
+// --- Конфигурация подключения к базе данных MySQL (использование Connection Pool) ---
 const pool = mysql.createPool({
-    host: 'localhost',    // Адрес вашего MySQL сервера
-    user: 'root',         // Ваше имя пользователя MySQL
-    password: '',         // Ваш пароль MySQL (если его нет, оставьте пустым)
-    database: 'testbd',   // Имя вашей базы данных
-    waitForConnections: true, // Будет ли пул ждать, пока станет доступно соединение, если все заняты
-    connectionLimit: 10,      // Максимальное количество одновременно открытых соединений
-    queueLimit: 0             // Максимальное количество запросов, которые могут стоять в очереди
+    host: 'localhost', // Адрес вашего MySQL сервера
+    user: 'root', // Ваше имя пользователя MySQL
+    password: '', // Ваш пароль MySQL (если его нет, оставьте пустым)
+    database: 'testbd', // Имя вашей базы данных
+    waitForConnections: true, // Будет ли пул ждать, пока станет доступно соединение
+    connectionLimit: 10, // Максимальное количество одновременно открытых соединений
+    queueLimit: 0 // Максимальное количество запросов, которые могут стоять в очереди
 });
 
-// 4. Проверка подключения к базе данных (опционально, но полезно для отладки)
+// Проверка подключения к базе данных (опционально, но полезно)
 pool.getConnection()
     .then(connection => {
         console.log('Подключено к базе данных MySQL через пул!');
         connection.release(); // Освобождаем соединение обратно в пул
     })
     .catch(err => {
-        console.error('Ошибка получения подключения из пула:', err.stack);
-        // В реальном приложении здесь можно предпринять действия,
-        // например, завершить процесс, если нет подключения к БД
+        console.error('Ошибка получения подключения из пула (БД недоступна):', err.stack);
+        // В реальном приложении здесь можно предусмотреть graceful shutdown или логирование
     });
 
-// 5. API-эндпоинт для получения данных users(пример)
+
+// --- API Эндпоинты ---
+
+// 1. API-эндпоинт для получения всех пользователей
 app.get('/api/data', async (req, res) => {
     try {
-        // execute() возвращает массив, где первый элемент - это строки, второй - метаданные полей
-        const [rows, fields] = await pool.execute('SELECT * FROM user'); // Убедитесь, что имя таблицы 'user'
-        res.json(rows); // Отправляем только строки (данные)
+        const [rows] = await pool.execute('SELECT id, firstName, lastName, email FROM user'); // Выбираем нужные поля
+        res.json(rows);
     } catch (error) {
         console.error('Ошибка выполнения запроса /api/data:', error);
-        res.status(500).json({ error: 'Ошибка сервера при получении данных.' });
+        res.status(500).json({ error: 'Ошибка сервера при получении данных пользователей.' });
     }
 });
 
-// 6. API-эндпоинт для получения данных animals(пример)
+// 2. API-эндпоинт для получения всех записей 'animals'
 app.get('/api/animals', async (req, res) => {
     try {
-        // execute() возвращает массив from Database, где первый элемент - это строки, второй - метаданные полей
-        const [rows, fieldsMetaData] = await pool.execute('SELECT * FROM animals'); // Убедитесь, что имя таблицы 'animals'
-        res.json(rows); // Отправляем только строки (данные)
+        const [rows] = await pool.execute('SELECT * FROM animals');
+        res.json(rows);
     } catch (error) {
         console.error('Ошибка выполнения запроса /api/animals:', error);
-        res.status(500).json({ error: 'Ошибка сервера при получении данных.' });
+        res.status(500).json({ error: 'Ошибка сервера при получении данных животных.' });
     }
 });
 
-
-
-
-// 7. API-эндпоинт для регистрации пользователя (SignUp Route)
+// 3. API-эндпоинт для регистрации пользователя (SignUp)
 app.post('/api/signup', async (req, res) => {
-    // Получаем данные из тела запроса (они будут доступны благодаря app.use(express.json()))
     const { firstName, lastName, email, password } = req.body;
 
-    // Базовая валидация данных
     if (!firstName || !lastName || !email || !password) {
         return res.status(400).json({ message: 'Все поля обязательны для заполнения.' });
     }
 
     try {
-        // 1. Проверка существования пользователя по email
-        console.log('Попытка выбора пользователя по email:', email);
-        const [existingUsers] = await pool.execute('SELECT id FROM user WHERE email = ?', [email]); // Используем pool.execute
-        console.log('Результат SELECT:', existingUsers);
-
+        // Проверяем, существует ли пользователь с таким email
+        const [existingUsers] = await pool.execute('SELECT id FROM user WHERE email = ?', [email]);
         if (existingUsers.length > 0) {
-            // Пользователь с таким email уже существует
             return res.status(409).json({ message: 'Пользователь с таким email уже зарегистрирован.' });
         }
 
-        // 2. Хеширование пароля перед сохранением в базу данных
-        // Использование bcrypt для безопасного хранения паролей
-        const hashedPassword = await bcrypt.hash(password, 10); // 10 - количество "раундов" хеширования (сложность)
+        // Хешируем пароль для безопасного хранения
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-        // 3. Вставка нового пользователя в базу данных
-        // Убедитесь, что имя таблицы `user` и имена колонок соответствуют вашей БД
-        // 'password_hash' - рекомендованное название для колонки, хранящей хешированный пароль
-        console.log('Попытка вставки нового пользователя...');
+        // Вставляем нового пользователя в БД
         const [result] = await pool.execute(
             'INSERT INTO user (firstName, lastName, email, password) VALUES (?, ?, ?, ?)',
             [firstName, lastName, email, hashedPassword]
         );
-        console.log('Результат INSERT:', result);
 
-        // Отправляем успешный ответ
         res.status(201).json({ message: 'Пользователь успешно зарегистрирован!', userId: result.insertId });
 
     } catch (error) {
-        // Обработка любых ошибок, возникших во время процесса регистрации
-        console.error('Ошибка во время регистрации пользователя (полная информация):', error);
-        // Отправляем общий 500-й статус ошибки клиенту.
-        // Избегайте отправки деталей ошибки базы данных клиенту в production!
+        console.error('Ошибка во время регистрации пользователя:', error);
         res.status(500).json({ message: 'Внутренняя ошибка сервера при регистрации.' });
     }
 });
 
-
-
-// API-эндпоинт для входа пользователя (Login Route)
+// 4. API-эндпоинт для входа пользователя (Login)
 app.post('/api/login', async (req, res) => {
-    // Получаем email и пароль из тела запроса
     const { email, password } = req.body;
 
-    // Базовая валидация
     if (!email || !password) {
         return res.status(400).json({ message: 'Email и пароль обязательны.' });
     }
 
     try {
-        // 1. Находим пользователя в базе данных по email
-        // Используем pool.execute, чтобы получить данные пользователя
+        // Находим пользователя по email
         const [users] = await pool.execute(
             'SELECT id, firstName, lastName, email, password FROM user WHERE email = ?',
             [email]
         );
 
-
-        
-        // Если пользователь не найден
         if (users.length === 0) {
-            // Важно: Не сообщайте, существует ли email или неверный пароль.
-            // Всегда давайте общее сообщение для безопасности.
             return res.status(401).json({ message: 'Неверные учетные данные (email или пароль).' });
         }
 
-        const user = users[0]; // Получаем найденного пользователя
-        const hashedPassword = user.password; // Получаем хешированный пароль из БД
+        const user = users[0];
+        const hashedPassword = user.password;
 
-        // 2. Сравниваем предоставленный пароль с хешированным паролем из базы данных
+        // Сравниваем предоставленный пароль с хешированным
         const isPasswordValid = await bcrypt.compare(password, hashedPassword);
 
         if (!isPasswordValid) {
-            // Пароль не совпадает
             return res.status(401).json({ message: 'Неверные учетные данные (email или пароль).' });
         }
 
+        // Генерируем JWT токен
         const token = jwt.sign({
-                userId: user.id, 
-                email: user.email, 
+                userId: user.id,
+                email: user.email,
             },
             process.env.JWT_SECRET,
-            { expiresIn: '24h' } // Токен истекает через 1 час
+            { expiresIn: '24h' } // Токен истекает через 24 часа
         );
 
         res.status(200).json({
@@ -223,7 +210,6 @@ app.post('/api/login', async (req, res) => {
                 email: user.email
             }
         });
-
 
     } catch (error) {
         console.error('Ошибка во время входа пользователя:', error);
@@ -231,91 +217,78 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// 5. Эндпоинт для получения данных текущего пользователя
+app.get('/api/me', authMiddleware, async (req, res) => {
+    try {
+        // req.user уже содержит userId из токена, благодаря authMiddleware
+        const [users] = await pool.execute(
+            'SELECT id, firstName, lastName, email FROM user WHERE id = ?',
+            [req.user.userId]
+        );
 
-// Эндпоинт для получения данных текущего пользователя
-app.get('/api/me', authMiddleware,  async (req, res) => {
-  try {
-    // Получаем токен из заголовков
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ message: 'Токен отсутствует' });
+        if (users.length === 0) {
+            return res.status(404).json({ message: 'Пользователь не найден.' });
+        }
+
+        res.json(users[0]);
+    } catch (error) {
+        console.error('Ошибка в /api/me:', error);
+        res.status(500).json({ message: 'Ошибка сервера.' });
     }
-
-    // Верифицируем токен
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Находим пользователя в БД
-    const [users] = await pool.execute(
-      'SELECT id, firstName, lastName, email FROM user WHERE id = ?',
-      [decoded.userId]
-    );
-
-    if (users.length === 0) {
-      return res.status(404).json({ message: 'Пользователь не найден' });
-    }
-
-    res.json(users[0]);
-  } catch (error) {
-    console.error('Ошибка в /api/me:', error);
-    res.status(500).json({ message: 'Ошибка сервера' });
-  }
 });
 
+// 6. Эндпоинт для смены пароля пользователя
+app.put('/api/user/change-password', authMiddleware, async (req, res) => {
+    const userId = req.user.userId;
+    const { currentPassword, newPassword } = req.body;
 
-app.put('/api/user/change-password',authMiddleware, async(req,res) => {
-    const userId = req.user.userId; // Получаем ID из токена    
-    const { currentPassword, newPassword} = req.body;
-
-      // Валидация
-  if (!currentPassword || !newPassword) {
-    return res.status(400).json({ error: 'Все поля обязательны' });
-  }
-
-  if (newPassword.length < 6) {
-    return res.status(400).json({ error: 'Пароль должен быть минимум 6 символов' });
-  }
-
-  try {
-    // 1. Получаем текущий пароль из БД
-    const [users] = await pool.execute(
-      'SELECT password FROM user WHERE id = ?', 
-      [userId]
-    );
-
-    if (users.length === 0) {
-      return res.status(404).json({ error: 'Пользователь не найден' });
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: 'Текущий и новый пароли обязательны.' });
     }
 
-    const user = users[0];
-
-    // 2. Проверяем совпадение текущего пароля
-    const isMatch = await bcrypt.compare(currentPassword, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Неверный текущий пароль' });
+    if (newPassword.length < 6) {
+        return res.status(400).json({ error: 'Новый пароль должен быть минимум 6 символов.' });
     }
 
-    // 3. Хешируем новый пароль
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    try {
+        // Получаем хешированный пароль пользователя из БД
+        const [users] = await pool.execute(
+            'SELECT password, id, firstName, lastName, email FROM user WHERE id = ?',
+            [userId]
+        );
 
-    // 4. Обновляем пароль в БД
-    await pool.execute(
-      'UPDATE user SET password = ? WHERE id = ?',
-      [hashedPassword, userId]
-    );
+        if (users.length === 0) {
+            return res.status(404).json({ error: 'Пользователь не найден.' });
+        }
 
-    // 5. Отправляем успешный ответ
-            const token = jwt.sign({
-                userId: user.id, 
-                email: user.email, 
+        const user = users[0];
+        // Проверяем совпадение текущего пароля
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ error: 'Неверный текущий пароль.' });
+        }
+
+        // Хешируем новый пароль
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        // Обновляем пароль в БД
+        await pool.execute(
+            'UPDATE user SET password = ? WHERE id = ?',
+            [hashedPassword, userId]
+        );
+
+        // Генерируем новый токен с актуальными данными пользователя (хорошая практика после смены пароля)
+        const newToken = jwt.sign({
+                userId: user.id,
+                email: user.email,
             },
             process.env.JWT_SECRET,
-            { expiresIn: '24h' } // Токен истекает через 1 час
+            { expiresIn: '24h' }
         );
 
         res.status(200).json({
-            message: 'Вход успешно выполнен!',
-            token: token,
-            user: {
+            message: 'Пароль успешно обновлен!',
+            token: newToken,
+            user: { // Возвращаем обновленные данные пользователя
                 id: user.id,
                 firstName: user.firstName,
                 lastName: user.lastName,
@@ -323,61 +296,54 @@ app.put('/api/user/change-password',authMiddleware, async(req,res) => {
             }
         });
 
-  } catch (error) {
-    console.error('Ошибка при смене пароля:', error);
-    res.status(500).json({ error: 'Ошибка сервера' });
-  }
+    } catch (error) {
+        console.error('Ошибка при смене пароля:', error);
+        res.status(500).json({ error: 'Ошибка сервера.' });
+    }
 });
 
+// 7. Эндпоинт для обновления имени пользователя
 app.put('/api/user/update-name', authMiddleware, async (req, res) => {
-  const userId = req.user.userId;
-  const { newUserName} = req.body;
-  // Валидация
-  if (!newUserName) {
-    return res.status(400).json({ error: 'Имя и фамилия обязательны' });
-  }
+    const userId = req.user.userId;
+    const { newUserName } = req.body; // Получаем новое имя
 
-  if (newUserName.length < 2) {
-    return res.status(400).json({ error: 'Имя должно состоять минимум из 2 букв' });
-  }
+    if (!newUserName) {
+        return res.status(400).json({ error: 'Имя пользователя обязательно.' });
+    }
+    if (newUserName.length < 2) {
+        return res.status(400).json({ error: 'Имя должно состоять минимум из 2 символов.' });
+    }
 
-  
-
-
- try {
-    // 1. Обновляем имя в БД
-    await pool.execute(
-      'UPDATE user SET firstName = ? WHERE id = ?',
-      [newUserName, userId]
-    );
-
-    // 2. Получаем ОБНОВЛЕННЫЕ данные пользователя из базы данных
-      // Это важно, чтобы получить актуальные firstName, email и т.д.
-      const [rows] = await pool.query('SELECT id, firstName, lastName, email FROM user WHERE id = ?',
-        [userId]
-      );
-
-      if (rows.length === 0) {
-          // Это маловероятно, если обновление прошло успешно, но хорошо бы иметь
-          return res.status(404).json({ error: 'Пользователь не найден после обновления.' });
-      }
-      const updatedUser = rows[0]; // <<< Теперь у нас есть объект updatedUser
-
-        // 3. Генерируем новый токен с актуальными данными
-        const newToken = jwt.sign({
-            userId: updatedUser.id,
-            email: updatedUser.email,
-        },
-        process.env.JWT_SECRET,
-        // ВНИМАНИЕ: expiresIn: '24h' для 24 часов. '24' - это 24 миллисекунды!
-        { expiresIn: '24h' }
+    try {
+        // Обновляем имя в БД
+        await pool.execute(
+            'UPDATE user SET firstName = ? WHERE id = ?',
+            [newUserName, userId]
         );
 
-        // 4. Отправляем успешный ответ с обновленными данными пользователя и новым токеном
+        // Получаем ОБНОВЛЕННЫЕ данные пользователя из базы данных для нового токена
+        const [rows] = await pool.query('SELECT id, firstName, lastName, email FROM user WHERE id = ?',
+            [userId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Пользователь не найден после обновления.' });
+        }
+        const updatedUser = rows[0];
+
+        // Генерируем новый токен с актуальными данными пользователя
+        const newToken = jwt.sign({
+                userId: updatedUser.id,
+                email: updatedUser.email,
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
         res.status(200).json({
-            message: 'Имя успешно обновлено!', // Более подходящее сообщение
+            message: 'Имя успешно обновлено!',
             token: newToken,
-            user: { // Отправляем обратно обновленные данные пользователя
+            user: {
                 id: updatedUser.id,
                 firstName: updatedUser.firstName,
                 lastName: updatedUser.lastName,
@@ -385,41 +351,387 @@ app.put('/api/user/update-name', authMiddleware, async (req, res) => {
             }
         });
 
-  } catch (error) {
-    console.error('Ошибка при смене пароля:', error);
-    res.status(500).json({ error: 'Ошибка сервера' });
-  }
-
+    } catch (error) {
+        console.error('Ошибка при обновлении имени пользователя:', error);
+        res.status(500).json({ error: 'Ошибка сервера.' });
+    }
 });
 
+// 8. API-эндпоинт для создания новой темы с загрузкой файла в S3
 app.post("/api/new-topic", authMiddleware, upload.single('image'), async (req, res) => {
-    // req.file содержит информацию о загруженном файле
-    // req.body содержит текстовые поля, отправленные с FormData
-    const { category, name, description } = req.body;
-    const imageFile = req.file; // Это объект файла, который предоставляет multer (если storage: memoryStorage, то req.file.buffer)
+    const SELECTEL_BUCKET_UUID = '77dae30c-f073-48e8-a2a9-f9c9408ce905';
+    const { category, title, description } = req.body;
+    const imageFile = req.file; // Multer поместит файл сюда (содержит .buffer)
+    const userId = req.user.userId; // ID пользователя из JWT токена
 
-    // Проверка наличия всех необходимых данных
-    if (!category || !name || !description || !imageFile) {
-        console.error('Не хватает данных для создания темы:', { category, name, description, imageFile: !!imageFile });
+    // Проверка наличия всех обязательных данных
+    if (!category || !title || !description || !imageFile) {
+        // Если imageFile отсутствует, это может быть из-за отсутствия файла
+        // или из-за того, что Multer отклонил его (например, по типу или размеру)
+        console.error('Не хватает данных для создания темы или файл изображения отсутствует:', { category, name, description, imageFile: !!imageFile });
         return res.status(400).json({ message: 'Все поля (категория, название, описание) и файл изображения обязательны.' });
     }
 
-    // Пока S3 не настроен, выводим данные в консоль
-    console.log('Получены данные для создания темы:');
-    console.log('Категория:', category);
-    console.log('Название:', name);
-    console.log('Описание:', description);
-    console.log('Информация о файле:', {
-        originalname: imageFile.originalname,
-        mimetype: imageFile.mimetype,
-        size: imageFile.size,
-        // buffer: imageFile.buffer.toString('base64').substring(0, 50) + '...' // первые 50 символов буфера
-    });
-    console.log('*** Файл получен на бэкенде! ***');
-    res.status(200).json({message: 'ok'})
-})
+    let tableName = '';
+    switch(category) {
+        case 'NEWS':
+          tableName = "news";
+          break;
+        case 'SPORT':
+          tableName = "sports";
+          break;
+        case 'NATURE':
+          tableName = "nature";
+          break;
+        default:
+          throw new Error(`Invalid category: ${category}`);
+    }
 
-// Запуск сервера
+
+    let imageUrl = null; // Переменная для хранения URL загруженного изображения    
+    try {
+        // Генерируем уникальное имя файла для S3
+        // Формат: uploads/<timestamp>-originalfilename.ext
+        const s3Key = `uploads/${tableName}/${Date.now().toString()}-${imageFile.originalname}`;
+
+        // Создаем объект Upload для загрузки в S3 с использованием AWS SDK v3
+        const uploadS3 = new Upload({
+            client: s3Client, // Передаем наш инициализированный S3Client
+            params: {
+                Bucket: process.env.S3_BUCKET_NAME, // Имя вашего S3 бакета
+                Key: s3Key, // Сгенерированное уникальное имя файла в S3
+                Body: imageFile.buffer, // Содержимое файла (получено из multer.memoryStorage())
+                ACL: 'public-read', // Разрешения: файл будет публично доступен для чтения
+                ContentType: imageFile.mimetype, // MIME-тип файла (например, 'image/jpeg')
+                Metadata: { // Опциональные пользовательские метаданные
+                    fieldname: imageFile.fieldname,
+                    userId: userId.toString(), // Пример: добавляем ID пользователя как метаданные
+                },
+            },
+            // опционально: для более крупных файлов можно настроить параллельную загрузку
+            // queueSize: 4, // Максимальное количество параллельных частей
+            // partSize: 1024 * 1024 * 5, // Размер каждой части (5 МБ)
+        });
+
+        // Слушаем события прогресса загрузки (опционально)
+         uploadS3.on('httpUploadProgress', (progress) => {
+             console.log(`Прогресс загрузки: ${Math.round(progress.loaded / progress.total * 100)}%`);
+         });
+
+        // Выполняем загрузку файла в S3
+        const data = await uploadS3.done();
+        /* imageUrl = data.Location; */ // URL загруженного файла (возвращается S3 после успешной загрузки)
+        imageUrl = `https://${SELECTEL_BUCKET_UUID}.selstorage.ru/${s3Key}`;
+
+        // Сохраняем информацию о новой теме, включая URL изображения, в базу данных
+        const [result] = await pool.execute(
+            `INSERT INTO content (category, title, description, image_url, user_id) VALUES (?, ?, ?, ?, ?)`,
+            [category, title, description, imageUrl, userId]
+        );
+
+        // Отправляем успешный ответ клиенту
+        res.status(201).json({
+            message: 'Тема успешно создана и сохранена в БД!',
+            id: result.insertId,
+            imageUrl: imageUrl
+        });
+
+    } catch (error) {
+        // Обработка ошибок при загрузке в S3 или сохранении в БД
+        console.error('Ошибка при создании темы или загрузке изображения в S3:', error);
+        res.status(500).json({ message: 'Ошибка сервера при создании темы или загрузке изображения.' });
+    }
+});
+
+// 8. API-эндпоинт для получения списка самый последних новостей спорта
+app.get('/api/latest-sport-news', async (req,res) => {
+    try {
+      const [rows, metaData] = await pool.execute(
+        `SELECT * FROM content WHERE category = 'SPORT' ORDER BY uploaded_at DESC LIMIT 3`
+      )
+      return  res.status(200).json(rows);
+    
+    } catch(error) {
+      console.log(error);
+    }
+});
+
+//9 API-эндпоинт для получения списка myTopics
+app.get('/api/my-topics', authMiddleware, async (req, res) => {
+  const userId = req.user.userId;
+
+  try {
+    const [rows] = await pool.execute(
+      `
+      (SELECT id, category, title, description, uploaded_at FROM content WHERE user_id = ?)
+      ORDER BY uploaded_at DESC;
+      `,
+      [userId]
+    );
+
+   return res.json(rows);
+    
+
+    } catch (e) {
+    console.error(`Ошибка при получении данных для пользователя ${userId}:`, e);
+    res.status(500).json({ message: 'Ошибка сервера при получении данных.' });
+    }
+});
+
+//10 API-эндпоинт для удаления темы
+app.delete('/api/my-topic/:id', authMiddleware, async (req, res) => {
+    // Получаем ID пользователя из authMiddleware
+    const userId = req.user.userId;
+    // Получаем ID темы из параметров маршрута
+    const topicId = req.params.id; // Correctly get ID from route parameters
+
+    if (!topicId) {
+        return res.status(400).json({ message: 'ID темы не указан.' });
+    }
+
+    let connection; // Declare connection outside try-catch for proper release
+    try {
+        connection = await pool.getConnection(); // Get a connection from the pool
+        await connection.beginTransaction(); // Start a transaction for atomicity
+
+        // 1. Find the topic in the database using plain SQL
+        // In MySQL, the primary key is typically 'id', not '_id'.
+        // The image URL is stored in 'image_url' and user ID in 'user_id' based on your POST /api/new-topic
+        const [rows] = await connection.execute( // Use connection.execute within a transaction
+            'SELECT id, image_url FROM content WHERE id = ? AND user_id = ?',
+            [topicId, userId]
+        );
+
+        const topic = rows[0]; // If found, this will be the first (and only) result
+
+        if (!topic) {
+            await connection.rollback(); // Rollback if topic not found
+            return res.status(404).json({ message: 'Тема не найдена или у вас нет прав на ее удаление.' });
+        }
+
+        // 2. Delete associated files from S3 (if they exist)
+        // The image_url from the database will be the S3 Key if you stored the full URL
+        // If you stored only the key, you'd use that directly. Assuming full URL for now.
+        if (topic.image_url) {
+            // Extract the S3 key from the full URL.
+            // This depends on how your S3 URLs are structured.
+            // Example: "https://s3.selcdn.ru/your-bucket/uploads/news/1678888888-image.jpg"
+            // The key would be "uploads/news/1678888888-image.jpg"
+            const urlParts = topic.image_url.split('/');
+            // The S3 key is usually everything after the bucket name in the path.
+            // You might need to adjust this logic based on your exact S3 URL structure and endpoint.
+            // A safer approach is to store the S3 Key directly in the database, not the full URL.
+            // For now, let's assume the key is the path after the endpoint + bucket.
+            // If your S3_ENDPINT is 'https://s3.selcdn.ru' and S3_BUCKET_NAME is 'my-bucket',
+            // then the Key is everything after 'https://s3.selcdn.ru/my-bucket/'
+            const s3Key = topic.image_url.substring(
+                (process.env.S3_ENDPINT + '/' + process.env.S3_BUCKET_NAME + '/').length
+            );
+
+            const deleteParams = {
+                Bucket: process.env.S3_BUCKET_NAME, // Use your S3 bucket name from .env
+                Key: s3Key // The extracted S3 key
+            };
+
+            try {
+                // Use s3Client (AWS SDK v3) for deletion
+                await s3Client.send(new DeleteObjectCommand(deleteParams));
+                console.log(`S3 object ${s3Key} successfully deleted.`);
+            } catch (s3Error) {
+                // Important: If S3 deletion fails, it should not block DB deletion
+                // but should be logged and potentially alert an administrator.
+                console.error(`Error deleting S3 object ${s3Key}:`, s3Error);
+                // We don't rollback here, as DB deletion should proceed.
+            }
+        }
+
+        // 3. Delete the topic from the database using plain SQL
+        await connection.execute( // Use connection.execute within a transaction
+            'DELETE FROM content WHERE id = ? AND user_id = ?',
+            [topicId, userId]
+        );
+
+        await connection.commit(); // Commit the transaction if all operations are successful
+
+        // 4. Send a successful response to the client
+        res.status(200).json({ message: 'Тема успешно удалена.' });
+
+    } catch (error) {
+        if (connection) {
+            await connection.rollback(); // Rollback the transaction on any error
+        }
+        // Handle database errors or other unexpected errors
+        console.error('Error deleting topic:', error);
+        res.status(500).json({ message: 'Произошла ошибка на сервере при удалении темы.', error: error.message });
+    } finally {
+        if (connection) {
+            connection.release(); // Always release the connection back to the pool
+        }
+    }
+});
+
+//11 API-эндпоинт для получение Nature тем
+app.get('/api/nature', async (req,res) => {
+
+   try {
+    const [rows] = await pool.execute(
+        `
+        SELECT id, category, title, description, uploaded_at
+        FROM content
+        WHERE category = 'NATURE'
+        ORDER BY uploaded_at DESC;
+        `
+    );
+    return res.json(rows); 
+
+    } catch (e) {
+    console.error(`Ошибка при получении данных для пользователя`, e);
+    res.status(500).json({ message: 'Ошибка сервера при получении данных.' });
+    }
+});
+
+//12 API-эндпоинт для получение одной News
+app.get('/api/nature/:id', async (req, res) => {
+    const natureId = parseInt(req.params.id); // Преобразуем строковый ID из URL в число
+
+    if (isNaN(natureId)) {
+        return res.status(400).json({ message: 'Неверный формат ID новости.' });
+    }
+
+    try {
+        const [rows] = await pool.execute(
+            `
+            SELECT id, category, title, description,image_url, uploaded_at
+            FROM content
+            WHERE id = ? AND category = 'NATURE';
+            `,
+            [natureId]
+        );
+
+        const newsItem = rows[0];
+        if (newsItem) {
+            return res.json(newsItem);
+        } else {
+            return res.status(404).json({ message: `Новость с ID ${newsId} в категории NEWS не найдена.` });
+        }
+
+    } catch (e) {
+        // Ошибка здесь: вместо 'id' используйте 'newsId'
+        console.error(`Ошибка при получении данных для новости с ID ${newsId}:`, e); // <--- ИСПРАВЛЕНО ЗДЕСЬ
+        res.status(500).json({ message: 'Ошибка сервера при получении данных.' });
+    }
+});
+
+//13 API-эндпоинт для получение Sports тем
+app.get('/api/sport', async (req,res) => {
+
+   try {
+    const [rows] = await pool.execute(
+        `
+        SELECT id, category, title, description, uploaded_at
+        FROM content
+        WHERE category = 'SPORT'
+        ORDER BY uploaded_at DESC;
+        `
+    );
+    return res.json(rows); 
+
+    } catch (e) {
+    console.error(`Ошибка при получении данных для пользователя`, e);
+    res.status(500).json({ message: 'Ошибка сервера при получении данных.' });
+    }
+});
+
+//14 API-эндпоинт для получение одной News
+app.get('/api/sport/:id', async (req, res) => {
+    const sportId = parseInt(req.params.id); // Преобразуем строковый ID из URL в число
+
+    if (isNaN(sportId)) {
+        return res.status(400).json({ message: 'Неверный формат ID новости.' });
+    }
+
+    try {
+        const [rows] = await pool.execute(
+            `
+            SELECT id, category, title, description,image_url, uploaded_at
+            FROM content
+            WHERE id = ? AND category = 'SPORT';
+            `,
+            [sportId]
+        );
+
+        const newsItem = rows[0];
+        if (newsItem) {
+            return res.json(newsItem);
+        } else {
+            return res.status(404).json({ message: `Новость с ID ${newsId} в категории NEWS не найдена.` });
+        }
+
+    } catch (e) {
+        // Ошибка здесь: вместо 'id' используйте 'newsId'
+        console.error(`Ошибка при получении данных для новости с ID ${newsId}:`, e); // <--- ИСПРАВЛЕНО ЗДЕСЬ
+        res.status(500).json({ message: 'Ошибка сервера при получении данных.' });
+    }
+});
+
+//15 API-эндпоинт для получение News тем
+app.get('/api/news', async (req,res) => {
+
+   try {
+    const [rows] = await pool.execute(
+        `
+        SELECT id, category, title, description, uploaded_at
+        FROM content
+        WHERE category = 'NEWS'
+        ORDER BY uploaded_at DESC;
+        `
+    );
+    return res.json(rows); 
+
+    } catch (e) {
+    console.error(`Ошибка при получении данных для пользователя`, e);
+    res.status(500).json({ message: 'Ошибка сервера при получении данных.' });
+    }
+});
+
+//16 API-эндпоинт для получение одной News
+app.get('/api/news/:id', async (req, res) => {
+    const newsId = parseInt(req.params.id); // Преобразуем строковый ID из URL в число
+
+    if (isNaN(newsId)) {
+        return res.status(400).json({ message: 'Неверный формат ID новости.' });
+    }
+
+    try {
+        const [rows] = await pool.execute(
+            `
+            SELECT id, category, title, description,image_url, uploaded_at
+            FROM content
+            WHERE id = ? AND category = 'NEWS';
+            `,
+            [newsId]
+        );
+
+        const newsItem = rows[0];
+        if (newsItem) {
+            return res.json(newsItem);
+        } else {
+            return res.status(404).json({ message: `Новость с ID ${newsId} в категории NEWS не найдена.` });
+        }
+
+    } catch (e) {
+        // Ошибка здесь: вместо 'id' используйте 'newsId'
+        console.error(`Ошибка при получении данных для новости с ID ${newsId}:`, e); // <--- ИСПРАВЛЕНО ЗДЕСЬ
+        res.status(500).json({ message: 'Ошибка сервера при получении данных.' });
+    }
+});
+
+
+// --- Запуск сервера ---
 app.listen(port, () => {
     console.log(`Сервер запущен на http://localhost:${port}`);
 });
+
+
+
+

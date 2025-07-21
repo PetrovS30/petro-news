@@ -1,9 +1,12 @@
-import './footer.scss';
+import { Link } from 'react-router-dom';
+
 import petroLogo from '../../assets/images/petro-news-logo.svg';
 import facebook from '../../assets/icons/facebook.svg';
 import vk from '../../assets/icons/vk.svg';
 import instagram from '../../assets/icons/instagram.svg';
 
+
+import './footer.scss';
 
 const Footer = () => {
     return (
@@ -17,7 +20,7 @@ const Footer = () => {
 
                 <nav className="footer-nav">
                     <ul>
-                        <li><a href="/about" className="about-link">About me</a></li>
+                        <li><Link to='/about' className="about-link">About me</Link></li>
                     </ul>
                 </nav>
 

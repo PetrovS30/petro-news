@@ -6,6 +6,24 @@ import { setSignIn, setCurrentUser, setIsAuthChecked } from '../../store/slice/a
 export const useAuthCheck = () => {
   const dispatch = useDispatch();
 
+function clearAllAppCookies() {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i];
+        const eqPos = cookie.indexOf("=");
+        const name = eqPos > -1 ? cookie.substring(0, eqPos) : cookie;
+        
+        // Attempt to clear with default path and domain
+        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+
+        // If you know specific paths or domains your cookies might be on,
+        // you might need additional calls like these:
+        // document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/some/specific/path";
+        // document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;domain=.yourdomain.com"; // Note the leading dot for subdomains
+    }
+    console.log('Attempted to clear all accessible cookies.');
+}
+
   useEffect(() => {
     const checkAuth = async () => {
       const storedToken = Cookies.get('authToken');
@@ -16,6 +34,7 @@ export const useAuthCheck = () => {
         dispatch(setSignIn(false));
         dispatch(setCurrentUser(null));
         dispatch(setIsAuthChecked(true)); // Authentication check is complete
+        clearAllAppCookies();
         return;
       }
 

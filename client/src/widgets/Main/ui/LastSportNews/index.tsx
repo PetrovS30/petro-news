@@ -1,13 +1,45 @@
+import { useEffect, useState } from 'react';
 import styles from './LastSportNews.module.scss';
+import { Link } from 'react-router-dom';
+
+
+interface TitleId {
+    title: string
+    id: string
+}
 
 const LatestSportNews = () => {
+    const [title,setTitle] = useState<TitleId[]>([]);
+
+    useEffect (() => {
+        const getLastSportNews = async () => {
+            try{
+                const response = await fetch('http://localhost:3000/api/latest-sport-news');
+                if(!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                setTitle(data)
+                
+            }catch(e) {
+                console.log(e);
+            }   
+        }
+        getLastSportNews();
+    }, [] );
+
     return (
          <div className={styles['sidebar__latest-sport-news']}>
             <h2>The latest sports news</h2>
             <ul>
-                <li><a href="#link1">Дзюба продлил контракт с «Акроном» до конца сезона-2025/2026</a></li>
-                <li><a href="#link2">Тренер сборной Франции Дешам поделился эмоциями от победы «ПСЖ» в Лиге чемпионов</a></li>
-                <li><a href="#link3">Паула Бадоса: всё ещё далека от того уровня, которого хочу достичь</a></li>
+                {
+                    title.map((data, i) => {
+                        return (
+                            <li key={i}><Link to={`/sport/${data.id}`}>{data.title}</Link></li>
+                        )
+                    })
+                }
             </ul>
         </div>
     )

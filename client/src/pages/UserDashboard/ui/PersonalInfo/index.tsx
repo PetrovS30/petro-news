@@ -9,7 +9,8 @@ import { useDispatch } from 'react-redux';
 
 const PersonalInfo = () => {
     const {isCurrentUser} = useSelector(state => state.authReducer);
-    const firstName = isCurrentUser?.firstName; // Опциональная цепочка (`?.`)
+    const firstName = isCurrentUser?.firstName; 
+    const email = isCurrentUser?.email; 
 
     const dispatch = useDispatch() ;
     const [newUserName , setNewUserName] = useState(firstName);
@@ -18,8 +19,6 @@ const PersonalInfo = () => {
         setNewUserName(e.target.value)
     }
 
-// Используем useEffect для обновления newUserName, если firstName в Redux изменится.
-    // Это полезно, если Redux state обновляется из другого места.
     useEffect(() => {
         setNewUserName(isCurrentUser?.firstName || '');
     }, [isCurrentUser?.firstName]);
@@ -53,32 +52,23 @@ const PersonalInfo = () => {
                 console.log(data.message);
                 console.log(data);
                 
-                                // Если сервер возвращает новый токен и обновленные данные пользователя
                 if (data.token && data.user) {
                     Cookies.remove('authToken');
-                    Cookies.set('authToken', data.token, { expires: 1 }); // Обновляем токен
+                    Cookies.set('authToken', data.token, { expires: 1 }); 
 
-                    // Обновляем Redux state с ПОЛНЫМИ обновленными данными пользователя
                     dispatch(setCurrentUser(data.user));
-                    // Также обновляем локальное состояние, чтобы поле ввода сразу отражало изменения
                     setNewUserName(data.user.firstName);
                 }
             } else {
                 const errorData = await response.json();
                 console.error('Ошибка при обновлении имени:', errorData.error || response.statusText);
-                // Можно показать сообщение об ошибке пользователю
             }
-            
-             
-            
 
-            } catch (error) {
-                console.error('Ошибка:', error);
-            }
+        } catch (error) {
+            console.error('Ошибка:', error);
         }
+    }
     
-
-
     return(
         <div className='personal-info'>
             <h2>Личные данные</h2>
@@ -86,7 +76,7 @@ const PersonalInfo = () => {
                 <form onSubmit={submitNewName}>
                     <div>
                         <label htmlFor="email">Электронная почта (email)</label><br />
-                        <input title='Нельзя изменить' disabled autoComplete='email' type="text" id='email' name='email' placeholder='Почта'/>
+                        <input title='Нельзя изменить' disabled autoComplete='email' type="text" id='email' name='email' placeholder={email}/>
                     </div>
                     <div>
                         <label htmlFor="name">Ваше имя в системе</label><br />

@@ -1,6 +1,6 @@
 .header {
     display: flex;
-    height: clamp(120px, 15vw, 226px);
+/*     height: clamp(120px, 15vw, 226px); */
     background-color: #807373;
     margin: 0 auto;
     max-width: 1600px;
@@ -181,3 +181,20 @@
 }
 
 
+.drop-down-menu {
+    position: absolute;
+    top: 25px;
+    background-color: wheat;
+    padding: 5px 10px;
+    z-index: 1000;
+    height: 150px;
+    right: 12px;
+    color: black;
+    font-weight: 500;
+    border-radius: 6px;
+    div {
+        border-bottom: #000 1px solid;
+        cursor: pointer;
+        margin: 15px 1px;
+    }
+}

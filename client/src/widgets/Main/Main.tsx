@@ -17,10 +17,7 @@ const Main = () => {
   useEffect(() => {
     // При заходе на главную страницу
     if (location.pathname === '/' ) {
-      // Удаляем куку
       Cookies.remove('dashboard');
-/*       Cookies.set('isSignIn', "true", {expires: 7}); */
-      // Сбрасываем состояние
       dispatch(setUserDashboard(false));
     }
   }, [location.pathname, dispatch]);

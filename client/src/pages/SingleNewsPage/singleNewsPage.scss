@@ -1,0 +1,21 @@
+.single-item-container__news {
+    background-color: white;
+    max-width: 1200px;
+    margin: 0 auto;
+    color: black;
+    font-size: 16px;
+}
+
+.single-item-image__news {
+    max-width: 800;
+    height: "auto";
+}
+
+@media(max-width: 800px) {
+    .single-item-title__news {
+        margin: 6px 12px;
+    }
+    .single-item-description__news {
+        margin: 6px 12px;
+    }
+}
