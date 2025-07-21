@@ -110,7 +110,7 @@ const MyTopic = () => {
 
                     const myPosts = await response.json();
                     setTopics(myPosts)
-                    console.log('Полученные посты:', myPosts);
+
             }catch(e){
                 console.log(e);
                 return null;

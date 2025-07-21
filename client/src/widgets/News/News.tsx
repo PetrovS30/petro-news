@@ -104,7 +104,6 @@ const News = () => {
         });
 
         setNews(validatedData);
-        console.log('Полученные и отфильтрованные данные:', validatedData);
       } catch (e) {
         console.error('Произошла ошибка при запросе данных:', e);
       }

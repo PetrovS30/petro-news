@@ -21,7 +21,6 @@ function clearAllAppCookies() {
         // document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/some/specific/path";
         // document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;domain=.yourdomain.com"; // Note the leading dot for subdomains
     }
-    console.log('Attempted to clear all accessible cookies.');
 }
 
   useEffect(() => {
@@ -30,7 +29,7 @@ function clearAllAppCookies() {
 
       if (!storedToken) {
         // If no token, user is not authenticated. Clear any old data.
-        console.log('No authentication token found. User is not signed in.');
+      
         dispatch(setSignIn(false));
         dispatch(setCurrentUser(null));
         dispatch(setIsAuthChecked(true)); // Authentication check is complete
@@ -50,7 +49,6 @@ function clearAllAppCookies() {
 
         if (response.ok) {
           const userData = await response.json();
-          console.log('User data successfully loaded on app start:', userData);
           dispatch(setCurrentUser(userData)); // Assuming /api/me returns the user object directly
           dispatch(setSignIn(true)); // User is signed in
         } else {
