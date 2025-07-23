@@ -2,13 +2,13 @@ import { useState,useEffect } from 'react';
 import './personalInfo.scss';
 import { useSelector } from 'react-redux';
 import Cookies from 'js-cookie';
-
+import type{ RootState } from '../../../../store/store';
 import { setCurrentUser } from '../../../../store/slice/authSlice';
 import { useDispatch } from 'react-redux';
 
 
 const PersonalInfo = () => {
-    const {isCurrentUser} = useSelector(state => state.authReducer);
+    const {isCurrentUser} = useSelector((state:RootState) => state.authReducer);
     const firstName = isCurrentUser?.firstName; 
     const email = isCurrentUser?.email; 
 
