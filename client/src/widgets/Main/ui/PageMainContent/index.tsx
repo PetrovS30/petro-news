@@ -58,9 +58,13 @@ const PageMainContent = () => {
                             
                             reader.onloadend = () => {
                                 const base64Image = reader.result;
-                                localStorage.setItem('image_animal', base64Image);
-                                setImg(base64Image);
-                            };
+                                    if (typeof base64Image === 'string') {
+                                        localStorage.setItem('image_animal', base64Image);
+                                        setImg(base64Image);
+                                    } else {
+                                        console.error('Failed to read image as string (Base64). Result:', base64Image);
+                                    }
+                                };
                             reader.readAsDataURL(blob);
                         }
                     } catch(error) {

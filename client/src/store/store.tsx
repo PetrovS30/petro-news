@@ -9,3 +9,8 @@ const store = configureStore({
 });
 
 export default  store;
+
+// Определяем тип для всего состояния приложения
+export type RootState = ReturnType<typeof store.getState>;
+// Определяем тип для dispatch
+export type AppDispatch = typeof store.dispatch;

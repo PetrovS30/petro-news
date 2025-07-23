@@ -43,7 +43,12 @@ const SingleSportPage = () => {
 
         setNewsItem(data); 
       } catch (e: unknown) {
-        setError(e.message || 'Произошла ошибка при загрузке новости.');
+            // Проверяем, является ли e экземпляром Error
+            if (e instanceof Error) {
+                setError(e.message);
+            } else {
+                setError('Произошла неизвестная ошибка при загрузке новости.');
+            }
       } finally {
         setLoading(false); 
       }

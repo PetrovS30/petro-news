@@ -11,12 +11,14 @@ import ChangePassword from "./ui/ChangePassword";
 import PersonalInfo from './ui/PersonalInfo';
 import NewTopic from "./ui/NewTopic";
 import  MyTopic from "./ui/MyTopic";
+import type{ RootState } from "../../store/store";
+
 import './userDashboard.scss';
 
 
 
 const UserDashboard = () => {
-    const {isSignIn, isCurrentUser} = useSelector(state => state.authReducer);
+    const {isSignIn, isCurrentUser} = useSelector((state : RootState) => state.authReducer);
     const firstName = isCurrentUser?.firstName; // Опциональная цепочка (`?.`)
     const navigate = useNavigate();
     const location = useLocation();

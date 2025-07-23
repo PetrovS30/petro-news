@@ -14,8 +14,8 @@ import { setCurrentUser, setSignIn } from '../../../../../store/slice/authSlice'
 interface SignInFormProps {
     formClose: (value: boolean) => void; 
     formSignActive: (value: boolean) => void; 
-    onLoginSuccess: (userData: { id: number; firstName: string; lastName: string; email: string }, token?: string) => void;
-    handleSignInSuccess:(value: boolean) => void;
+    /* onLoginSuccess: (userData: { id: number; firstName: string; lastName: string; email: string }, token?: string) => void;
+    handleSignInSuccess:(value: boolean) => void; */
 }
 
 

@@ -9,6 +9,7 @@ import BurgerIcon from './ui/burgerMenu/BurgerMenu';
 import CloseMenu from './ui/closeBurgerMenuBtn/CloseBurgerMenuBtn';
 import {setCurrentUser, setSignIn, setUserDashboard}  from '../../store/slice/authSlice';
 import petrologo from '../../assets/images/petro-news-logo.svg';
+import type{ RootState } from '../../store/store';
 
 import './header.scss';
 
@@ -19,15 +20,10 @@ const Header = () => {
     const [isBurgerMenuOpened,setIsBurgerMenuOpened] = useState(true);
     const [isShowModalForm, setShowModalForm] = useState(false);
     const [dropDownMenu, setDropDownMenu] = useState(false);
-    const dropdownRef = useRef(null); // 👈 Создаем ref для выпадающего меню
+    const dropdownRef = useRef<HTMLDivElement>(null); 
 
     const {isAuthChecked, isSignIn, isCurrentUser} = useSelector(
-        (state : {authReducer: {
-            isAuthChecked : boolean,
-            isSignIn: boolean,
-            isCurrentUser: any,
-            isUserDashboard: boolean
-        }})=> state.authReducer
+        (state : RootState)=> state.authReducer
     ) ;
 
     const dispatch = useDispatch();
@@ -64,21 +60,22 @@ const Header = () => {
         };
     }, [isNavMenuOpen, mobileBreakpoint]); 
 
-// 👈 useEffect для добавления и удаления слушателя события
-    useEffect(() => {
-        const handleClickOutside = (event) => {
 
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)){
-                setDropDownMenu(false);
-            }
-        };
+    useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && event.target instanceof Node) {
+        if (!dropdownRef.current.contains(event.target)) {
+          setDropDownMenu(false);
+        }
+      }
+    };
 
         document.addEventListener('mousedown', handleClickOutside);
 
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, []); // Пустой массив зависимостей означает, что эффект запустится один раз при монтировании
+    }, []); 
 
 
     const closeFormModal = () => {
@@ -86,7 +83,7 @@ const Header = () => {
     }
 
     const toggleFormMode = () => {
-        setShowModalForm(!isShowModalForm);//prev?
+        setShowModalForm(!isShowModalForm);
     }
 
     const toggleUserDashboard = (bln: boolean) => {
