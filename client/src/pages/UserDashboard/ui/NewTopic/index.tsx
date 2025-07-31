@@ -2,6 +2,8 @@ import { useState } from 'react';
 import Cookies from 'js-cookie';
 import './newTopic.scss';
 
+import API_BASE_URL from '../../../../config/api';
+
 // Определяем тип для категорий, чтобы TypeScript мог проверять значения
 type Category = 'SPORT' | 'NEWS' | 'NATURE' | '';
 type MessageType = 'success' | 'error' | ''; // Типы для сообщений
@@ -62,7 +64,7 @@ const NewTopic = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:3000/api/new-topic', {
+      const response = await fetch(`${API_BASE_URL}/api/new-topic`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

@@ -2,6 +2,8 @@ import CloseBurgerMenuBtn from '../ui/CloseFormBtn/CloseFormBtn';
 import { UserLogo, PassLogo } from '../ui/LogoIcon/LogoIcon';
 import { useState} from 'react';
 
+import API_BASE_URL from '../../../../../config/api';
+
 import './register.scss';
 
 interface SignUpFormProps {
@@ -25,7 +27,7 @@ const SignUpForm = (props: SignUpFormProps) => {
             password,
         };
         try {
-            const res = await fetch("http://localhost:3000/api/signup", {
+            const res = await fetch(`${API_BASE_URL}api/signup`, {
                 method: 'POST', 
                 headers: {
                     "Content-Type": "application/json", 

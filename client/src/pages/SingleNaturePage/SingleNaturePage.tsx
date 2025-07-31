@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom'; // Хук для получения параметров из URL
 
+import API_BASE_URL from '../../config/api';
+
 import  './singleNaturePage.scss';
+
+
+
 
 interface NewsItem {
   id: number;
@@ -31,7 +36,7 @@ const SingleNaturePage = () => {
         setError(null); 
 
         try {
-            const response = await fetch(`http://localhost:3000/api/nature/${id}`);
+            const response = await fetch(`${API_BASE_URL}api/nature/${id}`);
 
             if (!response.ok) {
             if (response.status === 404) {

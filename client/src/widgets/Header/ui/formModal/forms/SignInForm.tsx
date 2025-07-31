@@ -6,6 +6,7 @@ import { useState } from 'react';
 import Cookies from 'js-cookie';
 import { useDispatch} from 'react-redux';
 
+import API_BASE_URL from '../../../../../config/api';
 
 import { setCurrentUser, setSignIn } from '../../../../../store/slice/authSlice';
 
@@ -54,7 +55,7 @@ const SignInForm = (props : SignInFormProps) => {
         };
 
         try {
-            const res = await fetch("http://localhost:3000/api/login", {
+            const res = await fetch(`${API_BASE_URL}api/login`, {
                 method: 'POST',
                 headers: {
                     "Content-Type": "application/json", 

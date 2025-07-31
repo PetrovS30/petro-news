@@ -5,6 +5,8 @@ import trashDelete from './../../../../assets/icons/trash-delete.svg';
 import pencilEdit from './../../../../assets/icons/pencil-edit.svg';
 import iconArrowPrev from '../../../../assets/icons/icon-arrow-prev.svg'
 import iconArrowNext from '../../../../assets/icons/icon-arrow-next.svg';
+import API_BASE_URL from '../../../../config/api';
+
 
 import './myTopic.scss';
 
@@ -50,7 +52,7 @@ const MyTopic = () => {
         }
 
         try {
-            const response =  await fetch(`http://localhost:3000/api/my-topic/${id}`, {
+            const response =  await fetch(`${API_BASE_URL}api/my-topic/${id}`, {
                 method : 'DELETE',
                 headers : {
                      'Content-Type': 'application/json',
@@ -95,7 +97,7 @@ const MyTopic = () => {
         }
 
             try{
-                const response = await fetch('http://localhost:3000/api/my-topics', {
+                const response = await fetch(`${API_BASE_URL}api/my-topics`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',

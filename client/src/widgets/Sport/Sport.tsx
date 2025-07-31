@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import iconArrowPrev from '../../assets/icons/icon-arrow-prev.svg';
 import iconArrowNext from '../../assets/icons/icon-arrow-next.svg';
 
+import API_BASE_URL from '../../config/api';
+
 import './sports.scss';
 
 interface NewsItem {
@@ -80,7 +82,7 @@ const Sport = () => {
   useEffect(() => {
     const getNature = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/sport');
+        const response = await fetch(`${API_BASE_URL}api/sport`);
         if (!response.ok) {
           console.error('Ошибка при получении данных:', response.statusText);
           return;

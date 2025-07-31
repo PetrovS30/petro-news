@@ -3,6 +3,8 @@ import Cookies from 'js-cookie';
 import { useDispatch } from 'react-redux';
 import { setSignIn, setCurrentUser, setIsAuthChecked } from '../../store/slice/authSlice';
 
+import API_BASE_URL from '../../config/api';
+
 export const useAuthCheck = () => {
   const dispatch = useDispatch();
 
@@ -39,7 +41,7 @@ function clearAllAppCookies() {
 
       // If a token exists, try to fetch the latest user data from the server
       try {
-        const response = await fetch('http://localhost:3000/api/me', { // Use /api/me as discussed
+        const response = await fetch(`${API_BASE_URL}api/me`, { // Use /api/me as discussed
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -60,15 +62,14 @@ function clearAllAppCookies() {
         }
       } catch (error) {
         console.error('Network or server error during authentication check:', error);
-        Cookies.remove('authToken'); // Clean up token on error
+        Cookies.remove('authToken'); 
         dispatch(setSignIn(false));
         dispatch(setCurrentUser(null));
       } finally {
-        // Always set isAuthChecked to true once the check is done (regardless of success or failure)
         dispatch(setIsAuthChecked(true));
       }
     };
 
     checkAuth();
-  }, [dispatch]); // Dependency array: run only when dispatch changes (which is rare)
+  }, [dispatch]); 
 };

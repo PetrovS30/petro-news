@@ -5,6 +5,7 @@ import Cookies from 'js-cookie';
 import type{ RootState } from '../../../../store/store';
 import { setCurrentUser } from '../../../../store/slice/authSlice';
 import { useDispatch } from 'react-redux';
+import API_BASE_URL from '../../../../config/api';
 
 
 const PersonalInfo = () => {
@@ -35,7 +36,7 @@ const PersonalInfo = () => {
 
 
         try {
-            const response = await fetch('http://localhost:3000/api/user/update-name', {
+            const response = await fetch(`${API_BASE_URL}api/user/update-name`, {
                 method: 'PUT', // или 'PATCH', если сервер ожидает его
                 headers: {
                     'Content-Type': 'application/json',
