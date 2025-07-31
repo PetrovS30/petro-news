@@ -19,7 +19,7 @@ const port = process.env.PORT || 3000; // Используем порт из .en
 
 // 1. CORS Middleware: Разрешает запросы с вашего фронтенда.
 app.use(cors({
-    origin: 'http://localhost:5173', // Укажите точный домен вашего фронтенда
+    origin: ['http://localhost:5173', 'http://87.228.114.70'], // Укажите точный домен вашего фронтенда
     credentials: true // Разрешить отправку куки и заголовков авторизации
 }));
 
@@ -85,12 +85,12 @@ const authMiddleware = (req, res, next) => {
 
 // --- Конфигурация подключения к базе данных MySQL (использование Connection Pool) ---
 const pool = mysql.createPool({
-    host: 'localhost', // Адрес вашего MySQL сервера
-    user: 'root', // Ваше имя пользователя MySQL
-    password: '', // Ваш пароль MySQL (если его нет, оставьте пустым)
-    database: 'testbd', // Имя вашей базы данных
+    host: process.env.DB_HOST, // Адрес вашего MySQL сервера
+    user: process.env.DB_USER, // Ваше имя пользователя MySQL
+    password: process.env.DB_PASSWORD, // Ваш пароль MySQL (если его нет, оставьте пустым)
+    database: process.env.DB_DATABASE, // Имя вашей базы данных
     waitForConnections: true, // Будет ли пул ждать, пока станет доступно соединение
-    connectionLimit: 10, // Максимальное количество одновременно открытых соединений
+    connectionLimit: process.env.DB_CONNECTION_LIMIT, // Максимальное количество одновременно открытых соединений
     queueLimit: 0 // Максимальное количество запросов, которые могут стоять в очереди
 });
 
