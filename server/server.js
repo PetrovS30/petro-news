@@ -10,7 +10,8 @@ const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3'); // Кл
 const { Upload } = require('@aws-sdk/lib-storage'); // Утилита для удобной загрузки файлов в S3
 
 const path = require('path'); // Для работы с путями файлов (если потребуется)
-require('dotenv').config(); // Загружает переменные окружения из .env файла
+/* require('dotenv').config(); */ // Загружает переменные окружения из .env файла
+require('dotenv').config({ path: path.resolve(__dirname, `.env.${process.env.NODE_ENV}`) });
 
 const app = express();
 const port = process.env.PORT || 3000; // Используем порт из .env или по умолчанию 3000
@@ -19,7 +20,7 @@ const port = process.env.PORT || 3000; // Используем порт из .en
 
 // 1. CORS Middleware: Разрешает запросы с вашего фронтенда.
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://87.228.114.70'], // Укажите точный домен вашего фронтенда
+    origin: ['http://localhost:5173', 'http://31.129.33.133'], // Укажите точный домен вашего фронтенда
     credentials: true // Разрешить отправку куки и заголовков авторизации
 }));
 
