@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 
 import iconArrowPrev from '../../assets/icons/icon-arrow-prev.svg';
 import iconArrowNext from '../../assets/icons/icon-arrow-next.svg';
+import useTitle from '../../shared/hooks/useTitle';
 
 import API_BASE_URL from '../../config/api';
 
@@ -49,6 +50,7 @@ const getDateKey = (dateString: string): string => {
 };
 
 const Nature = () => {
+  useTitle('Petro-news / Nature')
   const [nature, setNature] = useState<NewsItem[]>([]);
 
   const [currentPage, setCurrentPage] = useState(1);

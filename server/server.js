@@ -10,8 +10,11 @@ const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3'); // Кл
 const { Upload } = require('@aws-sdk/lib-storage'); // Утилита для удобной загрузки файлов в S3
 
 const path = require('path'); // Для работы с путями файлов (если потребуется)
-/* require('dotenv').config(); */ // Загружает переменные окружения из .env файла
-require('dotenv').config({ path: path.resolve(__dirname, `.env.${process.env.NODE_ENV}`) });
+require('dotenv').config();        //dev
+require('dotenv').config({ path: path.resolve(__dirname, `.env.${process.env.NODE_ENV}`) });       //production
+
+
+
 
 const app = express();
 const port = process.env.PORT || 3000; // Используем порт из .env или по умолчанию 3000

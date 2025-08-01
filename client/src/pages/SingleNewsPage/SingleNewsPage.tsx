@@ -32,7 +32,7 @@ const SingleNewsPage = () => {
       setError(null); 
 
       try {
-        const response = await fetch(`${API_BASE_URL}/${id}`);
+        const response = await fetch(`${API_BASE_URL}api/news/${id}`);
 
         if (!response.ok) {
           if (response.status === 404) {
@@ -42,8 +42,7 @@ const SingleNewsPage = () => {
         }
 
         const data: NewsItem = await response.json();
-        console.log(data);
-        
+ 
         setNewsItem(data); 
       } catch (e: unknown) {
             // Проверяем, является ли e экземпляром Error

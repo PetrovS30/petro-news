@@ -13,6 +13,7 @@ interface TitleId {
 const LatestSportNews = () => {
     const [title,setTitle] = useState<TitleId[]>([]);
 
+
     useEffect (() => {
         const getLastSportNews = async () => {
             try{

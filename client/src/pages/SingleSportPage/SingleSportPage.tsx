@@ -32,7 +32,7 @@ const SingleSportPage = () => {
       setError(null); 
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/sport/${id}`);
+        const response = await fetch(`${API_BASE_URL}api/sport/${id}`);
 
         if (!response.ok) {
           if (response.status === 404) {

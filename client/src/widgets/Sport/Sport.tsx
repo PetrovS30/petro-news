@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import useTitle from '../../shared/hooks/useTitle';
 
 import iconArrowPrev from '../../assets/icons/icon-arrow-prev.svg';
 import iconArrowNext from '../../assets/icons/icon-arrow-next.svg';
@@ -49,6 +50,7 @@ const getDateKey = (dateString: string): string => {
 };
 
 const Sport = () => {
+  useTitle('Petro-news / sports')
   const [nature, setNature] = useState<NewsItem[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
 
