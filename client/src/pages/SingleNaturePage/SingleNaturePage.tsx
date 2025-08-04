@@ -6,59 +6,57 @@ import API_BASE_URL from '../../config/api';
 import  './singleNaturePage.scss';
 
 
-
-
 interface NewsItem {
-  id: number;
-  title: string;
-  description: string;
-  uploaded_at: string;
-  image_url?: string;
+    id: number;
+    title: string;
+    description: string;
+    uploaded_at: string;
+    image_url?: string;
 }
 
 const SingleNaturePage = () => {
-  // useParams позволяет получить параметры из URL.
-  const { id } = useParams<{ id: string }>(); 
-  const [newsItem, setNewsItem] = useState<NewsItem | null>(null); 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null); 
+    // useParams позволяет получить параметры из URL.
+    const { id } = useParams<{ id: string }>(); 
+    const [newsItem, setNewsItem] = useState<NewsItem | null>(null); 
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null); 
 
     //отличный пример для везуализации и читаемости кода
     useEffect(() => {
         const fetchNewsItem = async () => {
-        if (!id) {
-            setError('ID новости не найден в URL.');
-            setLoading(false);
-            return;
-        }
-
-        setLoading(true); 
-        setError(null); 
-
-        try {
-            const response = await fetch(`${API_BASE_URL}api/nature/${id}`);
-
-            if (!response.ok) {
-            if (response.status === 404) {
-                throw new Error(`Новость с ID ${id} не найдена.`);
+            if (!id) {
+                setError('ID новости не найден в URL.');
+                setLoading(false);
+                return;
             }
 
-            throw new Error(`Ошибка при загрузке новости: ${response.statusText}`);
-            }
+            setLoading(true); 
+            setError(null); 
 
-            const data: NewsItem = await response.json();
+            try {
+                const response = await fetch(`${API_BASE_URL}api/nature/${id}`);
 
-            setNewsItem(data); 
-        } catch (e: unknown) {
-            // Проверяем, является ли e экземпляром Error
-            if (e instanceof Error) {
-                setError(e.message);
-            } else {
-                setError('Произошла неизвестная ошибка при загрузке новости.');
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error(`Новость с ID ${id} не найдена.`);
+                    }
+
+                    throw new Error(`Ошибка при загрузке новости: ${response.statusText}`);
+                }
+
+                const data: NewsItem = await response.json();
+                setNewsItem(data); 
+
+            } catch (e: unknown) {
+                // Проверяем, является ли e экземпляром Error
+                if (e instanceof Error) {
+                    setError(e.message);
+                } else {
+                    setError('Произошла неизвестная ошибка при загрузке новости.');
+                }
+            } finally {
+                setLoading(false); 
             }
-        } finally {
-            setLoading(false); 
-        }
         };
 
         fetchNewsItem();
@@ -74,27 +72,30 @@ const SingleNaturePage = () => {
 
     if (!newsItem) {
         return <div className="single-item-container">Новость не найдена.</div>;
-  }
+    }
 
     return (
         <div  className="single-item-container__nature">
-        <h1 className="single-item-title__nature">{newsItem.title}</h1>
-        <p className="single-item-date">
-            Опубликовано:{' '}
-            {new Date(newsItem.uploaded_at).toLocaleDateString('ru-RU', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            })}
-        </p>
-        <div className='single-item-image__nature'>
-            <img src={newsItem.image_url} alt={newsItem.title} />
-        </div>
-        <div className="single-item-description__nature">
-            <p>{newsItem.description}</p>
-        </div>
+            <h1 className="single-item-title__nature">{newsItem.title}</h1>
+            
+            <p className="single-item-date">
+                Опубликовано:{' '}
+                {new Date(newsItem.uploaded_at).toLocaleDateString('ru-RU', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                })}
+            </p>
+
+            <div className='single-item-image__nature'>
+                <img src={newsItem.image_url} alt={newsItem.title} />
+            </div>
+
+            <div className="single-item-description__nature">
+                <p>{newsItem.description}</p>
+            </div>
         </div>
     );
 };

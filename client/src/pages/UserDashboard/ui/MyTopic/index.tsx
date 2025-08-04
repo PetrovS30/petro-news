@@ -15,7 +15,6 @@ interface Topic {
   title: string;
 }
 
-
 const MyTopic = () => {
     const [topics, setTopics] = useState<Topic[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
@@ -44,7 +43,6 @@ const MyTopic = () => {
     };
 
     const handleDeleteTopic = async (id:number) => {
-
         const token = Cookies.get('authToken')
         if (window.confirm('Вы уверены, что хотите удалить эту тему?')) {
             setTopics(topics.filter(topic => topic.id !== id));
@@ -89,36 +87,36 @@ const MyTopic = () => {
 
     useEffect(() =>  {
         const myTopics = async () =>  {
-        const token = Cookies.get('authToken');
+            const token = Cookies.get('authToken');
 
-        if (!token) {
-            console.error('Ошибка: Токен авторизации отсутствует.');
-            return;
-        }
-
-            try{
-                const response = await fetch(`${API_BASE_URL}api/my-topics`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}` // Здесь мы передаем токен
-                    },
-                });
-
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.message || 'Ошибка при получении постов');
-                    }
-
-                    const myPosts = await response.json();
-                    setTopics(myPosts)
-
-            }catch(e){
-                console.log(e);
-                return null;
+            if (!token) {
+                console.error('Ошибка: Токен авторизации отсутствует.');
+                return;
             }
-        }
-        myTopics();
+
+                try{
+                    const response = await fetch(`${API_BASE_URL}api/my-topics`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}` // Здесь мы передаем токен
+                        },
+                    });
+
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.message || 'Ошибка при получении постов');
+                        }
+
+                        const myPosts = await response.json();
+                        setTopics(myPosts)
+
+                }catch(e){
+                    console.log(e);
+                    return null;
+                }
+            }
+            myTopics();
     }, [])
 
         // --- Логика для усечения текста при изменении размера окна ---

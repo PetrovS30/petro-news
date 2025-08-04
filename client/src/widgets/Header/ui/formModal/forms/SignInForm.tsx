@@ -11,12 +11,10 @@ import API_BASE_URL from '../../../../../config/api';
 import { setCurrentUser, setSignIn } from '../../../../../store/slice/authSlice';
 
 
-// --- Определение интерфейса для пропсов ---
+
 interface SignInFormProps {
     formClose: (value: boolean) => void; 
     formSignActive: (value: boolean) => void; 
-    /* onLoginSuccess: (userData: { id: number; firstName: string; lastName: string; email: string }, token?: string) => void;
-    handleSignInSuccess:(value: boolean) => void; */
 }
 
 
@@ -44,7 +42,6 @@ const SignInForm = (props : SignInFormProps) => {
     };
 
 
-    
     const handleSignInSuccess = () => {
         dispatch(setSignIn(true));
     }
@@ -60,7 +57,7 @@ const SignInForm = (props : SignInFormProps) => {
                 headers: {
                     "Content-Type": "application/json", 
                 },
-                body: JSON.stringify(loginData), // Преобразуем объект в JSON-строку
+                body: JSON.stringify(loginData), 
             });
 
             if (res.ok) { 
@@ -73,7 +70,7 @@ const SignInForm = (props : SignInFormProps) => {
                     
                 }
 
-                // Закрываем форму
+
                 props.formClose(false);
                 function setCookie(name: string, value: string, days?: number): void {
                     let expires = "";

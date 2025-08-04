@@ -10,107 +10,115 @@ import API_BASE_URL from '../../config/api';
 import './sports.scss';
 
 interface NewsItem {
-  id: number;
-  title: string;
-  description: string;
-  uploaded_at: string;
+    id: number;
+    title: string;
+    description: string;
+    uploaded_at: string;
 }
 
 // Вспомогательная функция для форматирования дат для отображения
 const formatDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) {
-    return 'Неизвестная дата'; // Заглушка для невалидных дат
-  }
+    const date = new Date(dateString);
 
-  //Явно указываем типы для объекта options
-  const options: Intl.DateTimeFormatOptions = {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  };
+    if (isNaN(date.getTime())) {
+        return 'Неизвестная дата'; // Заглушка для невалидных дат
+    }
 
-  return date.toLocaleDateString('ru-RU', options);
+    //Явно указываем типы для объекта options
+    const options: Intl.DateTimeFormatOptions = {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    };
+
+    return date.toLocaleDateString('ru-RU', options);
 };
 
 // Вспомогательная функция для получения только части даты (ГГГГ-ММ-ДД) для сравнения
 const getDateKey = (dateString: string): string => {
-  if (!dateString || typeof dateString !== 'string') {
-    console.warn('getDateKey: Получена недействительная или нестроковая дата:', dateString);
-    return 'invalid-date-key';
-  }
+    if (!dateString || typeof dateString !== 'string') {
+        console.warn('getDateKey: Получена недействительная или нестроковая дата:', dateString);
+        return 'invalid-date-key';
+    }
 
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) {
-    console.warn('getDateKey: Невозможно преобразовать строку в валидную дату:', dateString);
-    return 'invalid-date-key';
-  }
+    const date = new Date(dateString);
 
-  return date.toISOString().split('T')[0]; // Получаем 'YYYY-MM-DD'
+    if (isNaN(date.getTime())) {
+        console.warn('getDateKey: Невозможно преобразовать строку в валидную дату:', dateString);
+        return 'invalid-date-key';
+    }
+
+    return date.toISOString().split('T')[0]; // Получаем 'YYYY-MM-DD'
 };
 
 const Sport = () => {
-  useTitle('Petro-news / sports')
-  const [nature, setNature] = useState<NewsItem[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
+    useTitle('Petro-news / sports')
+    const [nature, setNature] = useState<NewsItem[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
 
-  const topicsPerPage = 10;
-  const totalPages = Math.ceil(nature.length / topicsPerPage);
+    const topicsPerPage = 10;
+    const totalPages = Math.ceil(nature.length / topicsPerPage);
 
-  const indexOfLastTopic = currentPage * topicsPerPage;
-  const indexOfFirstTopic = indexOfLastTopic - topicsPerPage;
-  const currentTopics = nature.slice(indexOfFirstTopic, indexOfLastTopic);
+    const indexOfLastTopic = currentPage * topicsPerPage;
+    const indexOfFirstTopic = indexOfLastTopic - topicsPerPage;
+    const currentTopics = nature.slice(indexOfFirstTopic, indexOfLastTopic);
 
-  // Обработчик для изменения страницы
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+    // Обработчик для изменения страницы
+    const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
-  const goToPrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage((prev) => prev - 1);
-    }
-  };
-
-  const goToNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage((prev) => prev + 1);
-    }
-  };
-
-  const pageNumbers = [];
-  for (let i = 1; i <= totalPages; i++) {
-    pageNumbers.push(i);
-  }
-
-  useEffect(() => {
-    const getNature = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}api/sport`);
-        if (!response.ok) {
-          console.error('Ошибка при получении данных:', response.statusText);
-          return;
+    const goToPrevPage = () => {
+        if (currentPage > 1) {
+            setCurrentPage((prev) => prev - 1);
         }
-
-        const data: NewsItem[] = await response.json();
-
-        const validatedData = data.filter((item: NewsItem) => {
-          if (!item.uploaded_at || typeof item.uploaded_at !== 'string') {
-            console.warn('Пропущена новость: отсутствует или неверный тип `uploaded_at`', item);
-            return false;
-          }
-          const tempDate = new Date(item.uploaded_at);
-          if (isNaN(tempDate.getTime())) {
-            console.warn('Пропущена новость: невалидный формат даты в `uploaded_at`', item);
-            return false;
-          }
-          return true; 
-        });
-
-        setNature(validatedData);
-      } catch (e) {
-        console.error('Произошла ошибка при запросе данных:', e);
-      }
     };
-    getNature();
+
+    const goToNextPage = () => {
+        if (currentPage < totalPages) {
+            setCurrentPage((prev) => prev + 1);
+        }
+    };
+
+    const pageNumbers = [];
+    for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+    }
+
+    useEffect(() => {
+        const getNature = async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}api/sport`);
+
+                if (!response.ok) {
+                    console.error('Ошибка при получении данных:', response.statusText);
+                    return;
+                }
+
+                const data: NewsItem[] = await response.json();
+
+                const validatedData = data.filter((item: NewsItem) => {
+
+                if (!item.uploaded_at || typeof item.uploaded_at !== 'string') {
+                    console.warn('Пропущена новость: отсутствует или неверный тип `uploaded_at`', item);
+                    return false;
+                }
+
+                const tempDate = new Date(item.uploaded_at);
+
+                if (isNaN(tempDate.getTime())) {
+                    console.warn('Пропущена новость: невалидный формат даты в `uploaded_at`', item);
+                    return false;
+                }
+                    return true; 
+                });
+
+                setNature(validatedData);
+                
+            } catch (e) {
+                console.error('Произошла ошибка при запросе данных:', e);
+            }
+        };
+        
+        getNature();
   }, []);
 
   return (

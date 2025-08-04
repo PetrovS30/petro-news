@@ -79,10 +79,12 @@ const PersonalInfo = () => {
                         <label htmlFor="email">Электронная почта (email)</label><br />
                         <input title='Нельзя изменить' disabled autoComplete='email' type="text" id='email' name='email' placeholder={email}/>
                     </div>
+
                     <div>
                         <label htmlFor="name">Ваше имя в системе</label><br />
                         <input onChange={handleNameInputChange}  autoComplete='name' type="text" id='name' name='name' defaultValue={firstName}/>
                     </div>
+                    
                     <div>
                         <button type='submit'  className='personal-info__form-btn'>Сохранить изменения</button>
                     </div>

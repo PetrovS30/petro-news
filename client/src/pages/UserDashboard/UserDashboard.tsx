@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Cookies from "js-cookie";
-
 import { useDispatch} from "react-redux";
 import { useSelector } from "react-redux";
 
@@ -14,7 +13,6 @@ import  MyTopic from "./ui/MyTopic";
 import type{ RootState } from "../../store/store";
 
 import './userDashboard.scss';
-
 
 
 const UserDashboard = () => {
@@ -66,31 +64,30 @@ const UserDashboard = () => {
     }
 
   return (
-
       <div className="dashboard-container">
         <div  className='container-flex-centered'>
           <div className="dashboard-content-wrapper">
               <div className="dashboard-sidebar" >
-                <h2>Welcome, {firstName}</h2>
-                <nav aria-label="Управление личным кабинетом">
-                  <ul>
-                    <li>
-                      <button onClick={() => handleTabChange('newTop')} type="button">Добавить новую тему</button>
-                    </li>
-                    <li>
-                      <button onClick={() => handleTabChange('myTop')} type="button">Мои темы</button>
-                    </li>
-                    <li>
-                      <button onClick={() => handleTabChange('functions')} type="button">Change password</button>
-                    </li>
-                    <li>
-                      <button onClick={() => handleTabChange('settings')} type="button">Settings</button>
-                    </li>
-                    <li>
-                      <button onClick={() => handleSignOut()} type="button">Sign out</button>
-                    </li>
-                  </ul>
-                </nav>
+                    <h2>Welcome, {firstName}</h2>
+                        <nav aria-label="Управление личным кабинетом">
+                        <ul>
+                            <li>
+                                <button onClick={() => handleTabChange('newTop')} type="button">Добавить новую тему</button>
+                            </li>
+                            <li>
+                                <button onClick={() => handleTabChange('myTop')} type="button">Мои темы</button>
+                            </li>
+                            <li>
+                                <button onClick={() => handleTabChange('functions')} type="button">Change password</button>
+                            </li>
+                            <li>
+                                <button onClick={() => handleTabChange('settings')} type="button">Settings</button>
+                            </li>
+                            <li>
+                                <button onClick={() => handleSignOut()} type="button">Sign out</button>
+                            </li>
+                        </ul>
+                    </nav>
               </div>
 
               <div className="dashboard-main-content">

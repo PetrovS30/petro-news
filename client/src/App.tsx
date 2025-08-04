@@ -17,27 +17,27 @@ import { useAuthCheck } from './shared/hooks/useAuthCheck';
 import './App.scss';
 
 function App() {
-  useAuthCheck();
+    useAuthCheck();
 
-  return (
-    <Router>
-        <Header />
-            <Routes>
-              <Route path="/" element={<Main />} />
-              <Route path="/nature" element={<Nature />} />
-              <Route path="/sport" element={<Sport />} />
-              <Route path="/news" element={<News />} />
-              <Route path="/dashboard" element={<UserDashboard />} />
+    return (
+        <Router>
+            <Header />
+                <Routes>
+                <Route path="/" element={<Main />} />
+                <Route path="/nature" element={<Nature />} />
+                <Route path="/sport" element={<Sport />} />
+                <Route path="/news" element={<News />} />
+                <Route path="/dashboard" element={<UserDashboard />} />
 
-              <Route path="/news/:id" element={<SingleNewsPage />} />
-              <Route path="/nature/:id"element={<SingleNaturePage/>} />
-              <Route path="/sport/:id" element={<SingleSportPage/>} />
+                <Route path="/news/:id" element={<SingleNewsPage />} />
+                <Route path="/nature/:id"element={<SingleNaturePage/>} />
+                <Route path="/sport/:id" element={<SingleSportPage/>} />
 
-              <Route path="/about" element={<AboutMe/>} />
-            </Routes>
-          <Footer />
-    </Router>
-  )
+                <Route path="/about" element={<AboutMe/>} />
+                </Routes>
+            <Footer />
+        </Router>
+    )
 }
 
 export default App

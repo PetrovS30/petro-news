@@ -4,9 +4,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const jwt = require('jsonwebtoken');
-
-// Импортируем модули AWS SDK v3
-const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3'); // Клиент S3 для взаимодействия
+const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3'); // Клиент S3 для взаимодействия с s3 хранилищем(selectel)
 const { Upload } = require('@aws-sdk/lib-storage'); // Утилита для удобной загрузки файлов в S3
 
 const path = require('path'); // Для работы с путями файлов (если потребуется)
@@ -15,15 +13,13 @@ require('dotenv').config({ path: path.resolve(__dirname, `.env.${process.env.NOD
 
 
 
-
 const app = express();
 const port = process.env.PORT || 3000; // Используем порт из .env или по умолчанию 3000
 
 // --- Глобальные Middleware ---
-
 // 1. CORS Middleware: Разрешает запросы с вашего фронтенда.
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://31.129.33.133'], // Укажите точный домен вашего фронтенда
+    origin: ['http://localhost:5173', 'http://31.129.33.133'], 
     credentials: true // Разрешить отправку куки и заголовков авторизации
 }));
 
@@ -48,6 +44,7 @@ const s3Client = new S3Client({
 // --- Настройка Multer для обработки загрузки файлов ---
 // Multer теперь будет временно хранить файл в памяти (`req.file.buffer`),
 // а затем мы вручную загрузим его в S3 с помощью AWS SDK v3.
+// мы отправялем файлы (фото на сервер при помощи multer)
 const upload = multer({
     storage: multer.memoryStorage(), // Файл будет доступен в req.file.buffer
     limits: {
@@ -55,18 +52,19 @@ const upload = multer({
     },
     fileFilter: (req, file, cb) => {
         // Фильтрация типов файлов: разрешаем только изображения
-        const allowedMimes = ['image/jpeg', 'image/png', 'image/gif'];
+        const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];// webp -скорее всего данный тип файлов не работает во всех браузерах
         if (allowedMimes.includes(file.mimetype)) {
             cb(null, true); // Разрешить загрузку
         } else {
             // Отклонить загрузку с сообщением об ошибке
-            cb(new Error('Invalid file type. Only image files (jpeg, png, gif) are allowed.'), false);
+            cb(new Error('Invalid file type. Only image files (jpeg, png, gif, webp) are allowed.'), false);
         }
     }
 });
 
 
 // --- Middleware для верификации JWT токена ---
+//главная задача  данного Middleware — убедиться, что каждый запрос, который он обрабатывает, исходит от авторизованного пользователя.
 const authMiddleware = (req, res, next) => {
     const authHeader = req.headers.authorization;
     // Проверяем наличие заголовка Authorization и его формат 'Bearer token'
@@ -91,11 +89,11 @@ const authMiddleware = (req, res, next) => {
 const pool = mysql.createPool({
     host: process.env.DB_HOST, // Адрес вашего MySQL сервера
     user: process.env.DB_USER, // Ваше имя пользователя MySQL
-    password: process.env.DB_PASSWORD, // Ваш пароль MySQL (если его нет, оставьте пустым)
+    password: process.env.DB_PASSWORD, // Ваш пароль MySQL 
     database: process.env.DB_DATABASE, // Имя вашей базы данных
     waitForConnections: true, // Будет ли пул ждать, пока станет доступно соединение
     connectionLimit: process.env.DB_CONNECTION_LIMIT, // Максимальное количество одновременно открытых соединений
-    queueLimit: 0 // Максимальное количество запросов, которые могут стоять в очереди
+    queueLimit: 0 // Максимальное количество запросов, которые могут стоять в очереди   0 значает, что очередь не ограничена.
 });
 
 // Проверка подключения к базе данных (опционально, но полезно)
@@ -144,7 +142,11 @@ app.post('/api/signup', async (req, res) => {
 
     try {
         // Проверяем, существует ли пользователь с таким email
-        const [existingUsers] = await pool.execute('SELECT id FROM user WHERE email = ?', [email]);
+        const [existingUsers] = await pool.execute(
+            'SELECT id FROM user WHERE email = ?',
+            [email]
+        );
+        
         if (existingUsers.length > 0) {
             return res.status(409).json({ message: 'Пользователь с таким email уже зарегистрирован.' });
         }
@@ -192,6 +194,7 @@ app.post('/api/login', async (req, res) => {
         const isPasswordValid = await bcrypt.compare(password, hashedPassword);
 
         if (!isPasswordValid) {
+            console.log('Ошибка во время регистрации пользователя:', 'Неверные учетные данные (email или пароль).');
             return res.status(401).json({ message: 'Неверные учетные данные (email или пароль).' });
         }
 
@@ -235,6 +238,7 @@ app.get('/api/me', authMiddleware, async (req, res) => {
         }
 
         res.json(users[0]);
+        
     } catch (error) {
         console.error('Ошибка в /api/me:', error);
         res.status(500).json({ message: 'Ошибка сервера.' });
@@ -314,6 +318,7 @@ app.put('/api/user/update-name', authMiddleware, async (req, res) => {
     if (!newUserName) {
         return res.status(400).json({ error: 'Имя пользователя обязательно.' });
     }
+
     if (newUserName.length < 2) {
         return res.status(400).json({ error: 'Имя должно состоять минимум из 2 символов.' });
     }
@@ -450,13 +455,15 @@ app.post("/api/new-topic", authMiddleware, upload.single('image'), async (req, r
 // 8. API-эндпоинт для получения списка самый последних новостей спорта
 app.get('/api/latest-sport-news', async (req,res) => {
     try {
-      const [rows, metaData] = await pool.execute(
-        `SELECT * FROM content WHERE category = 'SPORT' ORDER BY uploaded_at DESC LIMIT 3`
-      )
-      return  res.status(200).json(rows);
+        const [rows, metaData] = await pool.execute(
+            `SELECT * FROM content WHERE category = 'SPORT' ORDER BY uploaded_at DESC LIMIT 3`
+        )
+
+        return  res.status(200).json(rows);
     
-    } catch(error) {
-      console.log(error);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Ошибка сервера при получении новостей.' });
     }
 });
 
@@ -473,16 +480,15 @@ app.get('/api/my-topics', authMiddleware, async (req, res) => {
       [userId]
     );
 
-   return res.json(rows);
-    
+    return res.json(rows);
 
-    } catch (e) {
-    console.error(`Ошибка при получении данных для пользователя ${userId}:`, e);
-    res.status(500).json({ message: 'Ошибка сервера при получении данных.' });
+    } catch (e) {   
+        console.error(`Ошибка при получении данных для пользователя ${userId}:`, e);
+        res.status(500).json({ message: 'Ошибка сервера при получении данных.' });
     }
 });
 
-//10 API-эндпоинт для удаления темы
+//10 API-эндпоинт для удаления темы --- не понятна тема
 app.delete('/api/my-topic/:id', authMiddleware, async (req, res) => {
     // Получаем ID пользователя из authMiddleware
     const userId = req.user.userId;
@@ -494,14 +500,12 @@ app.delete('/api/my-topic/:id', authMiddleware, async (req, res) => {
     }
 
     let connection; // Declare connection outside try-catch for proper release
+
     try {
         connection = await pool.getConnection(); // Get a connection from the pool
         await connection.beginTransaction(); // Start a transaction for atomicity
 
-        // 1. Find the topic in the database using plain SQL
-        // In MySQL, the primary key is typically 'id', not '_id'.
-        // The image URL is stored in 'image_url' and user ID in 'user_id' based on your POST /api/new-topic
-        const [rows] = await connection.execute( // Use connection.execute within a transaction
+        const [rows] = await connection.execute( 
             'SELECT id, image_url FROM content WHERE id = ? AND user_id = ?',
             [topicId, userId]
         );
@@ -513,21 +517,9 @@ app.delete('/api/my-topic/:id', authMiddleware, async (req, res) => {
             return res.status(404).json({ message: 'Тема не найдена или у вас нет прав на ее удаление.' });
         }
 
-        // 2. Delete associated files from S3 (if they exist)
-        // The image_url from the database will be the S3 Key if you stored the full URL
-        // If you stored only the key, you'd use that directly. Assuming full URL for now.
         if (topic.image_url) {
-            // Extract the S3 key from the full URL.
-            // This depends on how your S3 URLs are structured.
-            // Example: "https://s3.selcdn.ru/your-bucket/uploads/news/1678888888-image.jpg"
-            // The key would be "uploads/news/1678888888-image.jpg"
             const urlParts = topic.image_url.split('/');
-            // The S3 key is usually everything after the bucket name in the path.
-            // You might need to adjust this logic based on your exact S3 URL structure and endpoint.
-            // A safer approach is to store the S3 Key directly in the database, not the full URL.
-            // For now, let's assume the key is the path after the endpoint + bucket.
-            // If your S3_ENDPINT is 'https://s3.selcdn.ru' and S3_BUCKET_NAME is 'my-bucket',
-            // then the Key is everything after 'https://s3.selcdn.ru/my-bucket/'
+
             const s3Key = topic.image_url.substring(
                 (process.env.S3_ENDPINT + '/' + process.env.S3_BUCKET_NAME + '/').length
             );
@@ -561,12 +553,14 @@ app.delete('/api/my-topic/:id', authMiddleware, async (req, res) => {
         res.status(200).json({ message: 'Тема успешно удалена.' });
 
     } catch (error) {
+
         if (connection) {
             await connection.rollback(); // Rollback the transaction on any error
         }
         // Handle database errors or other unexpected errors
         console.error('Error deleting topic:', error);
         res.status(500).json({ message: 'Произошла ошибка на сервере при удалении темы.', error: error.message });
+
     } finally {
         if (connection) {
             connection.release(); // Always release the connection back to the pool
@@ -586,15 +580,16 @@ app.get('/api/nature', async (req,res) => {
         ORDER BY uploaded_at DESC;
         `
     );
-    return res.json(rows); 
+
+        return res.json(rows); 
 
     } catch (e) {
-    console.error(`Ошибка при получении данных для пользователя`, e);
-    res.status(500).json({ message: 'Ошибка сервера при получении данных.' });
+        console.error(`Ошибка при получении данных для пользователя`, e);
+        res.status(500).json({ message: 'Ошибка сервера при получении данных.' });
     }
 });
 
-//12 API-эндпоинт для получение одной News
+//12 API-эндпоинт для получение одной  ТЕМЫ News
 app.get('/api/nature/:id', async (req, res) => {
     const natureId = parseInt(req.params.id); // Преобразуем строковый ID из URL в число
 
@@ -616,37 +611,37 @@ app.get('/api/nature/:id', async (req, res) => {
         if (newsItem) {
             return res.json(newsItem);
         } else {
-            return res.status(404).json({ message: `Новость с ID ${newsId} в категории NEWS не найдена.` });
+            return res.status(404).json({ message: `Новость с ID ${natureId} в категории NEWS не найдена.` });
         }
 
     } catch (e) {
         // Ошибка здесь: вместо 'id' используйте 'newsId'
-        console.error(`Ошибка при получении данных для новости с ID ${newsId}:`, e); // <--- ИСПРАВЛЕНО ЗДЕСЬ
+        console.error(`Ошибка при получении данных для новости с ID ${natureId}:`, e); // <--- ИСПРАВЛЕНО ЗДЕСЬ
         res.status(500).json({ message: 'Ошибка сервера при получении данных.' });
     }
 });
 
 //13 API-эндпоинт для получение Sports тем
 app.get('/api/sport', async (req,res) => {
-
    try {
-    const [rows] = await pool.execute(
-        `
-        SELECT id, category, title, description, uploaded_at
-        FROM content
-        WHERE category = 'SPORT'
-        ORDER BY uploaded_at DESC;
-        `
+        const [rows] = await pool.execute(
+            `
+            SELECT id, category, title, description, uploaded_at
+            FROM content
+            WHERE category = 'SPORT'
+            ORDER BY uploaded_at DESC;
+            `
     );
+
     return res.json(rows); 
 
     } catch (e) {
-    console.error(`Ошибка при получении данных для пользователя`, e);
-    res.status(500).json({ message: 'Ошибка сервера при получении данных.' });
+        console.error(`Ошибка при получении данных для пользователя`, e);
+        res.status(500).json({ message: 'Ошибка сервера при получении данных.' });
     }
 });
 
-//14 API-эндпоинт для получение одной News
+//14 API-эндпоинт для получение одной ТЕМЫ SPROT
 app.get('/api/sport/:id', async (req, res) => {
     const sportId = parseInt(req.params.id); // Преобразуем строковый ID из URL в число
 
@@ -668,33 +663,32 @@ app.get('/api/sport/:id', async (req, res) => {
         if (newsItem) {
             return res.json(newsItem);
         } else {
-            return res.status(404).json({ message: `Новость с ID ${newsId} в категории NEWS не найдена.` });
+            return res.status(404).json({ message: `Новость с ID ${sportId} в категории NEWS не найдена.` });
         }
 
     } catch (e) {
         // Ошибка здесь: вместо 'id' используйте 'newsId'
-        console.error(`Ошибка при получении данных для новости с ID ${newsId}:`, e); // <--- ИСПРАВЛЕНО ЗДЕСЬ
+        console.error(`Ошибка при получении данных для новости с ID ${sportId}:`, e); // <--- ИСПРАВЛЕНО ЗДЕСЬ
         res.status(500).json({ message: 'Ошибка сервера при получении данных.' });
     }
 });
 
 //15 API-эндпоинт для получение News тем
 app.get('/api/news', async (req,res) => {
-
    try {
-    const [rows] = await pool.execute(
-        `
-        SELECT id, category, title, description, uploaded_at
-        FROM content
-        WHERE category = 'NEWS'
-        ORDER BY uploaded_at DESC;
-        `
-    );
+        const [rows] = await pool.execute(
+            `
+            SELECT id, category, title, description, uploaded_at
+            FROM content
+            WHERE category = 'NEWS'
+            ORDER BY uploaded_at DESC;
+            `
+        );
     return res.json(rows); 
 
     } catch (e) {
-    console.error(`Ошибка при получении данных для пользователя`, e);
-    res.status(500).json({ message: 'Ошибка сервера при получении данных.' });
+        console.error(`Ошибка при получении данных для пользователя`, e);
+        res.status(500).json({ message: 'Ошибка сервера при получении данных.' });
     }
 });
 
