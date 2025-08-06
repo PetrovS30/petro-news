@@ -17,6 +17,13 @@ interface SignInFormProps {
     formSignActive: (value: boolean) => void; 
 }
 
+interface User {
+    id: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+}
+
 
 const SignInForm = (props : SignInFormProps) => {
     const [email, setEmail] = useState('');
@@ -27,29 +34,39 @@ const SignInForm = (props : SignInFormProps) => {
     const dispatch = useDispatch()
 
 
-    //  Обработчик отправки формы 
+   const handleLoginSuccess = (user: User, token: string) => {
+        // Устанавливаем cookie с помощью js-cookie, это чище и надёжнее
+        // --- ВНИМАНИЕ: Для вашего текущего HTTP-сервера этот флаг будет `false`, и cookie будут работать. 
+        // Когда вы перейдёте на HTTPS, он автоматически станет `true`.
+        const isSecure = window.location.protocol === 'https:';
+
+        Cookies.set('authToken', token, { 
+            expires: 7, 
+            secure: isSecure, 
+            sameSite: 'Lax' // Lax обычно более гибкий, чем Strict
+        });
+        Cookies.set('isSignIn', "true", { 
+            expires: 7, 
+            secure: isSecure, 
+            sameSite: 'Lax'
+        });
+        Cookies.set('user', JSON.stringify(user), {
+            expires: 7, 
+            secure: isSecure, 
+            sameSite: 'Lax'
+        });
+
+        // Отправляем данные в Redux
+        dispatch(setSignIn(true));
+        dispatch(setCurrentUser(user));
+    };
+
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
         setError(null);
         setLoading(true);
 
-    const handleLoginSuccess = (userData: { id: number; firstName: string; lastName: string; email: string }) => {
-        dispatch(setSignIn(true));
-        dispatch(setCurrentUser(userData));
-        if(userData) {
-            Cookies.set('user', JSON.stringify(userData), { expires: 7 });
-        }
-    };
-
-
-    const handleSignInSuccess = () => {
-        dispatch(setSignIn(true));
-    }
-
-        const loginData = {
-            email,
-            password,
-        };
+        const loginData = { email, password };
 
         try {
             const res = await fetch(`${API_BASE_URL}api/login`, {
@@ -61,52 +78,29 @@ const SignInForm = (props : SignInFormProps) => {
             });
 
             if (res.ok) { 
-                const data = await res.json(); // Парсим ответ как JSON
+                const data = await res.json();
                 console.log('Login successful:', data);
-                handleSignInSuccess();
+
                 if (data.user && data.token) {
-                    handleLoginSuccess(data.user);
-                    console.log(data.user);
-                    
+                    // Используем новую, централизованную функцию для обработки успеха
+                    handleLoginSuccess(data.user, data.token);
                 }
 
-
-                props.formClose(false);
-                function setCookie(name: string, value: string, days?: number): void {
-                    let expires = "";
-                    if (days) {
-                        const date = new Date();
-                        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-                        expires = "; expires=" + date.toUTCString();
-                    }
-
-                    document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/; secure; SameSite=Strict";
-                }
-
-
-                if (data.token) {
-                    setCookie('authToken', data.token, 7); 
-                    setCookie('isSignIn', "true", 7); 
-                    console.log('JWT токен сохранен в куки (вручную):', data.token);
-                }
-
-                // Очищаем поля формы после успешного входа
                 setEmail('');
                 setPassword('');
                 props.formClose(false); 
+            } else {
+                const contentType = res.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    const errorData = await res.json();
+                    setError(errorData.message || 'Что-то пошло не так при входе.');
+                    console.error('Login failed:', errorData.message);
                 } else {
-                    const contentType = res.headers.get("content-type");
-
-                    if (contentType && contentType.includes("application/json")) {
-                        const errorData = await res.json();
-                        setError(errorData.message || 'Что-то пошло не так при входе.');
-                        console.error('Login failed:', errorData.message);
-                    } else {
-                        const errorMessage = await res.text(); 
-                        setError('Получен неожиданный ответ от сервера. Пожалуйста, попробуйте еще раз.');
-                        console.error('Login failed (non-JSON response):', res.status, errorMessage);
-                    }
+                    const errorMessage = await res.text(); 
+                    setError('Получен неожиданный ответ от сервера. Пожалуйста, попробуйте еще раз.');
+                    console.error('Login failed (non-JSON response):', res.status, errorMessage);
                 }
+            }
         } catch (err) {
             console.error('Сетевая ошибка при входе:', err);
             setError('Не удалось подключиться к серверу. Пожалуйста, проверьте подключение или попробуйте позже.');

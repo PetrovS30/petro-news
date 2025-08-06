@@ -6,6 +6,8 @@ const multer = require('multer');
 const jwt = require('jsonwebtoken');
 const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3'); // Клиент S3 для взаимодействия с s3 хранилищем(selectel)
 const { Upload } = require('@aws-sdk/lib-storage'); // Утилита для удобной загрузки файлов в S3
+const cookieParser = require('cookie-parser');
+const session = require('express-session');
 
 const path = require('path'); // Для работы с путями файлов (если потребуется)
 require('dotenv').config();        //dev
@@ -14,12 +16,15 @@ require('dotenv').config({ path: path.resolve(__dirname, `.env.${process.env.NOD
 
 
 const app = express();
+//Опция trust proxy говорит Express.js, что он работает за прокси-сервером (например, Nginx). Это позволяет ему корректно обрабатывать заголовки X-Forwarded-For и другие, которые передаёт прокси, и правильно определять IP-адрес клиента и домен.
+app.set('trust proxy', 1);
+
 const port = process.env.PORT || 3000; // Используем порт из .env или по умолчанию 3000
 
 // --- Глобальные Middleware ---
 // 1. CORS Middleware: Разрешает запросы с вашего фронтенда.
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://31.129.33.133'], 
+    origin: ['http://localhost:5173', 'http://31.129.33.133'], //меняй внешний ip
     credentials: true // Разрешить отправку куки и заголовков авторизации
 }));
 
@@ -27,7 +32,26 @@ app.use(cors({
 // Multer будет обрабатывать multipart/form-data для файловых загрузок.
 app.use(express.json({ limit: '50mb' })); // Увеличиваем лимит для JSON тела запроса
 app.use(express.urlencoded({ limit: '50mb', extended: true })); // Увеличиваем лимит для URL-encoded тела запроса
+app.use(cookieParser());       // Инициализируем cookie-parser
 
+
+// Middleware для сессий
+app.use(session({
+  // Обязательный секретный ключ из переменной окружения
+  secret: process.env.SESSION_SECRET,
+  
+  // Рекомендуемые опции для express-session
+  resave: false,
+  saveUninitialized: false,
+
+  // Опции для безопасности cookie
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // true только в production
+    httpOnly: true,
+    sameSite: 'Lax',
+    maxAge: 24 * 60 * 60 * 1000 // Время жизни cookie (например, 24 часа)
+  }
+}));
 
 // --- Настройка Selectel S3 с AWS SDK v3 ---
 // Создаем экземпляр S3Client для взаимодействия с S3-совместимым хранилищем (Selectel)
@@ -206,6 +230,15 @@ app.post('/api/login', async (req, res) => {
             process.env.JWT_SECRET,
             { expiresIn: '24h' } // Токен истекает через 24 часа
         );
+
+        res.cookie('authToken', token, {
+            httpOnly: true, // Защита от XSS-атак
+            // Устанавливаем secure: true только если протокол HTTPS
+            // req.protocol будет 'http' или 'https' благодаря 'trust proxy' и Nginx
+            secure: req.protocol === 'https', 
+            sameSite: 'Lax', // Защита от CSRF-атак
+            maxAge: 24 * 60 * 60 * 1000 // Время жизни cookie (24 часа)
+        });
 
         res.status(200).json({
             message: 'Вход успешно выполнен!',
