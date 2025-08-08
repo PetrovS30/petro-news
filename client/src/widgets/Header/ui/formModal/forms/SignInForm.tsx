@@ -36,7 +36,6 @@ const SignInForm = (props : SignInFormProps) => {
 
    const handleLoginSuccess = (user: User) => {
 
-        const isSecure = window.location.protocol === 'https:';
 
 /*         Cookies.set('isSignIn', "true", { 
             expires: 7, 
