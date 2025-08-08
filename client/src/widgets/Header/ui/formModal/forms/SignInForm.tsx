@@ -34,27 +34,22 @@ const SignInForm = (props : SignInFormProps) => {
     const dispatch = useDispatch()
 
 
-   const handleLoginSuccess = (user: User, token: string) => {
-        // Устанавливаем cookie с помощью js-cookie, это чище и надёжнее
-        // --- ВНИМАНИЕ: Для вашего текущего HTTP-сервера этот флаг будет `false`, и cookie будут работать. 
-        // Когда вы перейдёте на HTTPS, он автоматически станет `true`.
+   const handleLoginSuccess = (user: User) => {
+
         const isSecure = window.location.protocol === 'https:';
 
-        Cookies.set('authToken', token, { 
-            expires: 7, 
-            secure: isSecure, 
-            sameSite: 'Lax' // Lax обычно более гибкий, чем Strict
-        });
-        Cookies.set('isSignIn', "true", { 
+/*         Cookies.set('isSignIn', "true", { 
             expires: 7, 
             secure: isSecure, 
             sameSite: 'Lax'
-        });
-        Cookies.set('user', JSON.stringify(user), {
+        }); */
+/*         Cookies.set('user', JSON.stringify(user), {
             expires: 7, 
             secure: isSecure, 
             sameSite: 'Lax'
-        });
+        }); */
+
+        localStorage.setItem("isSignIn", JSON.stringify(true)); // Сохраняем true как строку
 
         // Отправляем данные в Redux
         dispatch(setSignIn(true));
@@ -75,15 +70,28 @@ const SignInForm = (props : SignInFormProps) => {
                     "Content-Type": "application/json", 
                 },
                 body: JSON.stringify(loginData), 
+                credentials: 'include'
             });
 
             if (res.ok) { 
                 const data = await res.json();
                 console.log('Login successful:', data);
 
-                if (data.user && data.token) {
+                // Проверяем, установлен ли токен
+                const token = Cookies.get('authToken');
+                console.log(data.user);
+                
+                localStorage.setItem("user", JSON.stringify(data.user));
+
+                if (token) {
+                    console.log('Токен найден:', token);
+                } else {
+                    console.log('Токен не найден. Пользователь не авторизован.');
+                }
+
+                if (data.user && token) {
                     // Используем новую, централизованную функцию для обработки успеха
-                    handleLoginSuccess(data.user, data.token);
+                    handleLoginSuccess(data.user);
                 }
 
                 setEmail('');

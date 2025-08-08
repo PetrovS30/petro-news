@@ -57,6 +57,9 @@ const UserDashboard = () => {
         setActiveTab('');
         dispatch(setSignIn(false));
         dispatch(setCurrentUser(null));
+
+        localStorage.removeItem('isSignIn');
+        localStorage.removeItem('user');
         Cookies.remove('user');
         Cookies.remove('authToken');
         Cookies.remove('isSignIn', { path: '/' });

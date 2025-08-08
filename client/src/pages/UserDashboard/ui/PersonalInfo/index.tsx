@@ -56,7 +56,7 @@ const PersonalInfo = () => {
                 if (data.token && data.user) {
                     Cookies.remove('authToken');
                     Cookies.set('authToken', data.token, { expires: 1 }); 
-
+                    localStorage.setItem('user', JSON.stringify(data.user));
                     dispatch(setCurrentUser(data.user));
                     setNewUserName(data.user.firstName);
                 }

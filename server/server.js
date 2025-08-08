@@ -232,7 +232,7 @@ app.post('/api/login', async (req, res) => {
         );
 
         res.cookie('authToken', token, {
-            httpOnly: true, // Защита от XSS-атак
+            httpOnly: false, // Защита от XSS-атак работает только при  https 
             // Устанавливаем secure: true только если протокол HTTPS
             // req.protocol будет 'http' или 'https' благодаря 'trust proxy' и Nginx
             secure: req.protocol === 'https', 
@@ -242,7 +242,6 @@ app.post('/api/login', async (req, res) => {
 
         res.status(200).json({
             message: 'Вход успешно выполнен!',
-            token: token,
             user: {
                 id: user.id,
                 firstName: user.firstName,

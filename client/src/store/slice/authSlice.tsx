@@ -2,6 +2,8 @@ import type{ PayloadAction } from "@reduxjs/toolkit";
 import { createSlice} from "@reduxjs/toolkit"; 
 import Cookies from "js-cookie";
 
+
+
 // Определите тип для вашего объекта пользователя
 interface User {
   id: number;
@@ -18,11 +20,13 @@ interface AuthState {
   isUserDashboard: boolean;
 }
 
+const storedUser = localStorage.getItem('user');
+const isSignIn = localStorage.getItem("isSignIn");
 // ПРИМЕНИТЕ AuthState К initialState ЗДЕСЬ
 const initialState: AuthState = {
   isAuthChecked: false,
-  isSignIn: Cookies.get('isSignIn') ? true : false,
-  isCurrentUser: null, // Изначально null, но тип AuthState позволяет ему стать User
+  isSignIn: isSignIn ? JSON.parse(isSignIn) : false,
+  isCurrentUser: storedUser ? JSON.parse(storedUser) : null,
   isUserDashboard: Cookies.get('dashboard') ? true : false
 };
 

@@ -23,7 +23,7 @@ const Header = () => {
     const dropdownRef = useRef<HTMLDivElement>(null); 
 
     const {isAuthChecked, isSignIn, isCurrentUser} = useSelector(
-        (state : RootState)=> state.authReducer
+        (state : RootState) => state.authReducer
     ) ;
 
     const dispatch = useDispatch();
@@ -33,6 +33,8 @@ const Header = () => {
     const handleSignOut = () => {
         dispatch(setSignIn(false));
         dispatch(setCurrentUser(null));
+        localStorage.removeItem('user');
+        localStorage.removeItem('isSignIn');
         Cookies.remove('user');
         Cookies.remove('authToken');
         Cookies.remove('isSignIn', { path: '/' });
