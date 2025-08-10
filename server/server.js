@@ -35,23 +35,6 @@ app.use(express.urlencoded({ limit: '50mb', extended: true })); // Увелич�
 app.use(cookieParser());       // Инициализируем cookie-parser
 
 
-// Middleware для сессий
-app.use(session({
-  // Обязательный секретный ключ из переменной окружения
-  secret: process.env.SESSION_SECRET,
-  
-  // Рекомендуемые опции для express-session
-  resave: false,
-  saveUninitialized: false,
-
-  // Опции для безопасности cookie
-  cookie: {
-    secure: process.env.NODE_ENV === 'production', // true только в production
-    httpOnly: true,
-    sameSite: 'Lax',
-    maxAge: 24 * 60 * 60 * 1000 // Время жизни cookie (например, 24 часа)
-  }
-}));
 
 // --- Настройка Selectel S3 с AWS SDK v3 ---
 // Создаем экземпляр S3Client для взаимодействия с S3-совместимым хранилищем (Selectel)
